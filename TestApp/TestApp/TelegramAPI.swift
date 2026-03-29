@@ -5,8 +5,66 @@ import Foundation
 class NetworkManager: ObservableObject {
     static let shared = NetworkManager()
     
-    // Замени на IP твоего компьютера где запущен бот
-    private let baseURL = "http://172.20.10.2:5000/api"
+    // Список возможных IP адресов для автопоиска
+    private let possibleIPs = [
+        "192.168.1.120",
+        "172.20.10.2",
+        "26.72.5.150",
+        "192.168.0.100",
+        "192.168.1.100",
+        "10.0.0.100"
+    ]
+    
+    @Published var currentIP: String = ""
+    @Published var isSearching: Bool = false
+    
+    private var baseURL: String {
+        return "http://\(currentIP):5000/api"
+    }
+    
+    func findServer(completion: @escaping (Bool) -> Void) {
+        isSearching = true
+        
+        // Пробуем каждый IP по очереди
+        tryNextIP(index: 0, completion: completion)
+    }
+    
+    private func tryNextIP(index: Int, completion: @escaping (Bool) -> Void) {
+        guard index < possibleIPs.count else {
+            isSearching = false
+            completion(false)
+            return
+        }
+        
+        let testIP = possibleIPs[index]
+        print("🔍 Проверяю IP: \(testIP)")
+        
+        guard let url = URL(string: "http://\(testIP):5000/api/users") else {
+            tryNextIP(index: index + 1, completion: completion)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2.0
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if error == nil, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                print("✅ Сервер найден: \(testIP)")
+                DispatchQueue.main.async {
+                    self.currentIP = testIP
+                    self.isSearching = false
+                    completion(true)
+                }
+            } else {
+                print("❌ IP не отвечает: \(testIP)")
+                self.tryNextIP(index: index + 1, completion: completion)
+            }
+        }.resume()
+    }
+    
+    func setCustomIP(_ ip: String) {
+        currentIP = ip
+    }
     
     func requestCode(phone: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/request_code") else {

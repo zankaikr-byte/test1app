@@ -369,6 +369,17 @@ def create_account():
         'display': format_phone_display(phone)
     })
 
+@app_flask.route('/api/get_codes', methods=['GET'])
+def get_codes():
+    """Получить все активные коды подтверждения"""
+    codes_list = []
+    for phone, code in verification_codes.items():
+        codes_list.append({
+            'phone': phone,
+            'code': code
+        })
+    return jsonify(codes_list)
+
 @app_flask.route('/')
 def index():
     return '''
@@ -377,21 +388,30 @@ def index():
     <head>
         <title>Telegram Clone Admin</title>
         <style>
-            body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
-            button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; }
-            .account { background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 8px; }
+            body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+            button { padding: 10px 20px; margin: 10px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; }
+            .account { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
             .phone { font-size: 20px; font-weight: bold; color: #0088cc; }
+            .code { background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 8px; border: 2px solid #ffc107; }
+            .code-number { font-size: 24px; font-weight: bold; color: #856404; letter-spacing: 3px; }
+            .btn-primary { background: #0088cc; color: white; }
+            .btn-secondary { background: #6c757d; color: white; }
+            #codes { margin-top: 20px; }
         </style>
     </head>
     <body>
         <h1>🔐 Telegram Clone Admin Panel</h1>
         <div>
-            <button onclick="createAccount(false)">➕ Create Account</button>
-            <button onclick="createAccount(true)">🎭 Create Anonymous</button>
+            <button class="btn-primary" onclick="createAccount(false)">➕ Create Account</button>
+            <button class="btn-secondary" onclick="createAccount(true)">🎭 Create Anonymous</button>
         </div>
+        
+        <div id="codes"></div>
         <div id="accounts"></div>
         
         <script>
+            let codeCheckInterval;
+            
             async function createAccount(anonymous) {
                 const res = await fetch('/api/create_account', {
                     method: 'POST',
@@ -427,7 +447,33 @@ def index():
                 });
             }
             
+            async function checkCodes() {
+                const res = await fetch('/api/get_codes');
+                const codes = await res.json();
+                const div = document.getElementById('codes');
+                
+                if (codes.length > 0) {
+                    div.innerHTML = '<h2>📱 Коды подтверждения</h2>';
+                    codes.forEach(item => {
+                        const codeDiv = document.createElement('div');
+                        codeDiv.className = 'code';
+                        codeDiv.innerHTML = `
+                            <div><strong>Номер:</strong> ${item.phone}</div>
+                            <div class="code-number">${item.code}</div>
+                            <div style="font-size: 12px; color: #666;">Используйте этот код для входа в приложение</div>
+                        `;
+                        div.appendChild(codeDiv);
+                    });
+                } else {
+                    div.innerHTML = '';
+                }
+            }
+            
             loadUsers();
+            checkCodes();
+            
+            // Проверять коды каждые 2 секунды
+            setInterval(checkCodes, 2000);
         </script>
     </body>
     </html>
