@@ -2,8 +2,11 @@ import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 from cryptography.fernet import Fernet
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import json
 import random
+import threading
 
 # Admin Telegram IDs
 ADMIN_IDS = [8434056844]  # Замени на свой Telegram ID
@@ -19,6 +22,10 @@ cipher = Fernet(ENCRYPTION_KEY)
 users_data = {}  # {phone: {name, chat_id, is_anonymous}}
 messages_data = []  # {from_phone, to_phone, text, encrypted}}
 used_phones = set()
+
+# Flask API
+app_flask = Flask(__name__)
+CORS(app_flask)
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
@@ -65,6 +72,84 @@ def encrypt_message(message: str) -> str:
 
 def decrypt_message(encrypted: str) -> str:
     return cipher.decrypt(encrypted.encode()).decode()
+
+# Flask API Routes
+@app_flask.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
+    phone = data.get('phone')
+    
+    user = users_data.get(phone)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    return jsonify({
+        'success': True,
+        'name': user['name']
+    })
+
+@app_flask.route('/api/users', methods=['GET'])
+def get_users():
+    users_list = []
+    for phone, data in users_data.items():
+        users_list.append({
+            'phone': phone,
+            'name': data['name'],
+            'is_anonymous': data.get('is_anonymous', False)
+        })
+    return jsonify(users_list)
+
+@app_flask.route('/api/search', methods=['GET'])
+def search():
+    query = request.args.get('q', '').lower()
+    results = []
+    
+    for phone, data in users_data.items():
+        if query in data.get('name', '').lower() or query in phone:
+            results.append({
+                'phone': phone,
+                'name': data['name']
+            })
+    
+    return jsonify(results[:10])
+
+@app_flask.route('/api/send', methods=['POST'])
+def send_message_api():
+    data = request.json
+    from_phone = data.get('from')
+    to_phone = data.get('to')
+    text = data.get('text')
+    
+    if not users_data.get(from_phone) or not users_data.get(to_phone):
+        return jsonify({'error': 'User not found'}), 404
+    
+    encrypted = encrypt_message(text)
+    messages_data.append({
+        'from_phone': from_phone,
+        'to_phone': to_phone,
+        'text': text,
+        'encrypted': encrypted
+    })
+    
+    return jsonify({'success': True})
+
+@app_flask.route('/api/messages', methods=['GET'])
+def get_messages():
+    phone = request.args.get('phone')
+    user_messages = []
+    
+    for msg in messages_data:
+        if msg['from_phone'] == phone or msg['to_phone'] == phone:
+            user_messages.append({
+                'from': msg['from_phone'],
+                'to': msg['to_phone'],
+                'text': msg['text']
+            })
+    
+    return jsonify(user_messages[-50:])
+
+def run_flask():
+    app_flask.run(host='0.0.0.0', port=5000, debug=False)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -211,77 +296,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка текстовых сообщений от приложения"""
+    """Обработка текстовых сообщений"""
     text = update.message.text
-    chat_id = update.effective_chat.id
-    
-    # Формат: LOGIN:phone или SEND:from_phone:to_phone:message или SEARCH:query
-    if text.startswith('LOGIN:'):
-        phone = text.replace('LOGIN:', '').strip()
-        user = find_user_by_phone(phone)
-        
-        if user:
-            users_data[phone]['chat_id'] = chat_id
-            await update.message.reply_text(f"OK:{user['name']}")
-        else:
-            await update.message.reply_text("ERROR:User not found")
-    
-    elif text.startswith('SEND:'):
-        parts = text.replace('SEND:', '').split(':', 2)
-        if len(parts) == 3:
-            from_phone, to_phone, message = parts
-            
-            if find_user_by_phone(from_phone) and find_user_by_phone(to_phone):
-                encrypted = encrypt_message(message)
-                messages_data.append({
-                    'from_phone': from_phone,
-                    'to_phone': to_phone,
-                    'text': message,
-                    'encrypted': encrypted
-                })
-                
-                # Отправить уведомление получателю если он онлайн
-                to_user = users_data[to_phone]
-                if to_user.get('chat_id'):
-                    try:
-                        await context.bot.send_message(
-                            chat_id=to_user['chat_id'],
-                            text=f"MSG:{from_phone}:{message}"
-                        )
-                    except:
-                        pass
-                
-                await update.message.reply_text("OK:Message sent")
-            else:
-                await update.message.reply_text("ERROR:User not found")
-    
-    elif text.startswith('SEARCH:'):
-        query_text = text.replace('SEARCH:', '').strip().lower()
-        results = []
-        
-        for phone, data in users_data.items():
-            if query_text in data.get('name', '').lower() or query_text in phone:
-                results.append(f"{phone}:{data['name']}")
-        
-        if results:
-            await update.message.reply_text("RESULTS:" + "|".join(results[:10]))
-        else:
-            await update.message.reply_text("RESULTS:")
-    
-    elif text.startswith('GETMSGS:'):
-        phone = text.replace('GETMSGS:', '').strip()
-        user_messages = []
-        
-        for msg in messages_data:
-            if msg['from_phone'] == phone or msg['to_phone'] == phone:
-                user_messages.append(f"{msg['from_phone']}>{msg['to_phone']}:{msg['text']}")
-        
-        if user_messages:
-            await update.message.reply_text("MSGS:" + "|".join(user_messages[-50:]))
-        else:
-            await update.message.reply_text("MSGS:")
+    await update.message.reply_text(f"Получено: {text}")
 
 def main():
+    # Запуск Flask API в отдельном потоке
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    
     app = Application.builder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -289,9 +312,9 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("🤖 Бот запущен!")
-    print(f"🔑 Bot Token: {BOT_TOKEN}")
+    print("🌐 API сервер запущен на http://localhost:5000")
     print(f"🔐 Ключ шифрования: {ENCRYPTION_KEY.decode()}")
-    print("\nПриложение будет общаться напрямую с ботом через Telegram API")
+    print("\nПриложение подключается к http://localhost:5000/api")
     
     # Fix for Python 3.14 asyncio event loop
     import asyncio

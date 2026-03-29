@@ -92,14 +92,14 @@ struct AuthView: View {
         isLoading = true
         errorMessage = ""
         
-        TelegramAPI.shared.login(phone: phoneNumber) { result in
+        NetworkManager.shared.login(phone: phoneNumber) { result in
             DispatchQueue.main.async {
                 isLoading = false
                 
                 switch result {
-                case .success(let name):
+                case .success(let userData):
                     settings.userPhone = phoneNumber
-                    settings.userName = name
+                    settings.userName = userData.name
                     settings.isAuthenticated = true
                     
                 case .failure(_):
