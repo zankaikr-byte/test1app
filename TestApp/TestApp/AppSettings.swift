@@ -5,6 +5,13 @@ class AppSettings: ObservableObject {
     @Published var theme: String = "system"
     @Published var chatBackground: String = "default"
     
+    // Authentication
+    @Published var isAuthenticated: Bool = false
+    @Published var userPhone: String = ""
+    @Published var userName: String = ""
+    @Published var userId: String = ""
+    @Published var telegramId: String = ""
+    
     func localizedString(_ key: String) -> String {
         let translations: [String: [String: String]] = [
             "ru": [

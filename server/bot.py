@@ -1,22 +1,64 @@
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 from cryptography.fernet import Fernet
 import json
+import random
 
 # Admin Telegram IDs
 ADMIN_IDS = [8434056844]  # Замени на свой Telegram ID
+
+# Bot Token
+BOT_TOKEN = "8623096705:AAGTHypGpra_zTN2JP5OLjTJMRm8tNoOw3Y"
 
 # Encryption key
 ENCRYPTION_KEY = Fernet.generate_key()
 cipher = Fernet(ENCRYPTION_KEY)
 
 # Data storage
-users_data = {}
-messages_data = []
+users_data = {}  # {phone: {name, chat_id, is_anonymous}}
+messages_data = []  # {from_phone, to_phone, text, encrypted}}
+used_phones = set()
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
+
+def generate_phone() -> str:
+    """Генерация американского номера +1 (XXX) XXX-XXXX"""
+    while True:
+        area_code = random.randint(200, 999)
+        prefix = random.randint(200, 999)
+        line = random.randint(1000, 9999)
+        phone = f"+1{area_code}{prefix}{line}"
+        
+        if phone not in used_phones:
+            used_phones.add(phone)
+            return phone
+
+def generate_anonymous_phone() -> str:
+    """Генерация анонимного номера +888 XXXX XXXX"""
+    while True:
+        part1 = random.randint(1000, 9999)
+        part2 = random.randint(1000, 9999)
+        phone = f"+888{part1}{part2}"
+        
+        if phone not in used_phones:
+            used_phones.add(phone)
+            return phone
+
+def format_phone_display(phone: str) -> str:
+    """Форматирование номера для отображения"""
+    if phone.startswith("+1") and len(phone) == 12:
+        # +1 (XXX) XXX-XXXX
+        return f"+1 ({phone[2:5]}) {phone[5:8]}-{phone[8:]}"
+    elif phone.startswith("+888") and len(phone) == 12:
+        # +888 XXXX XXXX
+        return f"+888 {phone[4:8]} {phone[8:]}"
+    return phone
+
+def find_user_by_phone(phone: str):
+    """Поиск пользователя по номеру"""
+    return users_data.get(phone)
 
 def encrypt_message(message: str) -> str:
     return cipher.encrypt(message.encode()).decode()
@@ -26,14 +68,15 @@ def decrypt_message(encrypted: str) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
     
     if is_admin(user_id):
         keyboard = [
             [InlineKeyboardButton("📊 Статистика", callback_data='stats')],
             [InlineKeyboardButton("👥 Пользователи", callback_data='users')],
             [InlineKeyboardButton("💬 Сообщения", callback_data='messages')],
-            [InlineKeyboardButton("🔒 Шифрование", callback_data='encryption')],
-            [InlineKeyboardButton("⚙️ Настройки", callback_data='settings')]
+            [InlineKeyboardButton("➕ Создать аккаунт", callback_data='create_account')],
+            [InlineKeyboardButton("🎭 Анонимный аккаунт", callback_data='create_anonymous')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -46,7 +89,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(
             '❌ У вас нет доступа к админ панели.\n'
-            f'Ваш ID: `{user_id}`',
+            f'Ваш Telegram ID: `{user_id}`',
             parse_mode='Markdown'
         )
 
@@ -67,17 +110,20 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👥 Пользователей: {len(users_data)}
 💬 Сообщений: {len(messages_data)}
 🔒 Шифрование: Активно
-🔑 Ключ: `{ENCRYPTION_KEY.decode()[:20]}...`
 """
-        await query.edit_message_text(stats_text, parse_mode='Markdown')
+        keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data='back')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(stats_text, reply_markup=reply_markup, parse_mode='Markdown')
     
     elif query.data == 'users':
         if not users_data:
             text = "👥 *Пользователи*\n\nПользователей пока нет"
         else:
             text = "👥 *Пользователи*\n\n"
-            for uid, data in users_data.items():
-                text += f"• ID: {uid}\n  Имя: {data.get('name', 'Unknown')}\n\n"
+            for phone, data in users_data.items():
+                phone_display = format_phone_display(phone)
+                icon = "🎭" if data.get('is_anonymous') else "📱"
+                text += f"{icon} {phone_display}\n👤 {data.get('name', 'Unknown')}\n\n"
         
         keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -85,109 +131,182 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif query.data == 'messages':
         if not messages_data:
-            text = "💬 *Сообщения*\n\nСообщений пока нет"
+            text = "� *Сообщения*\n\nСообщений пока нет"
         else:
-            text = "💬 *Последние сообщения*\n\n"
+            text = "� *Последние сообщения*\n\n"
             for msg in messages_data[-10:]:
-                decrypted = decrypt_message(msg['encrypted'])
-                text += f"• {msg['from']}: {decrypted}\n"
+                try:
+                    decrypted = decrypt_message(msg['encrypted'])
+                    text += f"От {msg['from_phone']} → {msg['to_phone']}\n{decrypted}\n\n"
+                except:
+                    pass
         
         keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
     
-    elif query.data == 'encryption':
+    elif query.data == 'create_account':
+        # Генерация обычного аккаунта
+        phone = generate_phone()
+        users_data[phone] = {
+            'name': 'New User',
+            'chat_id': None,
+            'is_anonymous': False
+        }
+        
+        phone_display = format_phone_display(phone)
         text = f"""
-🔒 *Настройки шифрования*
+✅ *Аккаунт создан!*
 
-Алгоритм: Fernet (AES-128)
-Ключ: `{ENCRYPTION_KEY.decode()[:30]}...`
+📱 Номер для входа:
+`{phone}`
 
-Все сообщения шифруются end-to-end.
+Отображается как: {phone_display}
+
+Используйте этот номер для входа в приложение.
 """
-        keyboard = [
-            [InlineKeyboardButton("🔄 Сгенерировать новый ключ", callback_data='new_key')],
-            [InlineKeyboardButton("◀️ Назад", callback_data='back')]
-        ]
+        keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
     
-    elif query.data == 'settings':
-        text = """
-⚙️ *Настройки приложения*
+    elif query.data == 'create_anonymous':
+        # Генерация анонимного аккаунта
+        phone = generate_anonymous_phone()
+        users_data[phone] = {
+            'name': 'Anonymous',
+            'chat_id': None,
+            'is_anonymous': True
+        }
+        
+        phone_display = format_phone_display(phone)
+        text = f"""
+✅ *Анонимный аккаунт создан!*
 
-• Язык: Русский/English
-• Тема: Светлая/Темная
-• Фон чата: 3 варианта
-• Приватность: Настраивается
+🎭 Номер для входа:
+`{phone}`
+
+Отображается как: {phone_display}
+
+Анонимные аккаунты имеют специальный префикс +888.
 """
         keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data='back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
     
     elif query.data == 'back':
-        await start(query, context)
+        keyboard = [
+            [InlineKeyboardButton("📊 Статистика", callback_data='stats')],
+            [InlineKeyboardButton("👥 Пользователи", callback_data='users')],
+            [InlineKeyboardButton("💬 Сообщения", callback_data='messages')],
+            [InlineKeyboardButton("➕ Создать аккаунт", callback_data='create_account')],
+            [InlineKeyboardButton("🎭 Анонимный аккаунт", callback_data='create_anonymous')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            '🔐 *Админ панель Telegram App*\n\n'
+            'Выберите действие:',
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
 
-async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        await update.message.reply_text("❌ Нет доступа")
-        return
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка текстовых сообщений от приложения"""
+    text = update.message.text
+    chat_id = update.effective_chat.id
     
-    if len(context.args) < 2:
-        await update.message.reply_text("Использование: /adduser <id> <name>")
-        return
+    # Формат: LOGIN:phone или SEND:from_phone:to_phone:message или SEARCH:query
+    if text.startswith('LOGIN:'):
+        phone = text.replace('LOGIN:', '').strip()
+        user = find_user_by_phone(phone)
+        
+        if user:
+            users_data[phone]['chat_id'] = chat_id
+            await update.message.reply_text(f"OK:{user['name']}")
+        else:
+            await update.message.reply_text("ERROR:User not found")
     
-    user_id = context.args[0]
-    name = " ".join(context.args[1:])
+    elif text.startswith('SEND:'):
+        parts = text.replace('SEND:', '').split(':', 2)
+        if len(parts) == 3:
+            from_phone, to_phone, message = parts
+            
+            if find_user_by_phone(from_phone) and find_user_by_phone(to_phone):
+                encrypted = encrypt_message(message)
+                messages_data.append({
+                    'from_phone': from_phone,
+                    'to_phone': to_phone,
+                    'text': message,
+                    'encrypted': encrypted
+                })
+                
+                # Отправить уведомление получателю если он онлайн
+                to_user = users_data[to_phone]
+                if to_user.get('chat_id'):
+                    try:
+                        await context.bot.send_message(
+                            chat_id=to_user['chat_id'],
+                            text=f"MSG:{from_phone}:{message}"
+                        )
+                    except:
+                        pass
+                
+                await update.message.reply_text("OK:Message sent")
+            else:
+                await update.message.reply_text("ERROR:User not found")
     
-    users_data[user_id] = {"name": name}
-    await update.message.reply_text(f"✅ Пользователь {name} добавлен")
-
-async def send_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update.effective_user.id):
-        await update.message.reply_text("❌ Нет доступа")
-        return
+    elif text.startswith('SEARCH:'):
+        query_text = text.replace('SEARCH:', '').strip().lower()
+        results = []
+        
+        for phone, data in users_data.items():
+            if query_text in data.get('name', '').lower() or query_text in phone:
+                results.append(f"{phone}:{data['name']}")
+        
+        if results:
+            await update.message.reply_text("RESULTS:" + "|".join(results[:10]))
+        else:
+            await update.message.reply_text("RESULTS:")
     
-    if len(context.args) < 1:
-        await update.message.reply_text("Использование: /send <message>")
-        return
-    
-    message = " ".join(context.args)
-    encrypted = encrypt_message(message)
-    
-    messages_data.append({
-        "from": "Admin",
-        "encrypted": encrypted
-    })
-    
-    await update.message.reply_text(
-        f"✅ Сообщение отправлено\n"
-        f"Зашифровано: `{encrypted[:50]}...`",
-        parse_mode='Markdown'
-    )
+    elif text.startswith('GETMSGS:'):
+        phone = text.replace('GETMSGS:', '').strip()
+        user_messages = []
+        
+        for msg in messages_data:
+            if msg['from_phone'] == phone or msg['to_phone'] == phone:
+                user_messages.append(f"{msg['from_phone']}>{msg['to_phone']}:{msg['text']}")
+        
+        if user_messages:
+            await update.message.reply_text("MSGS:" + "|".join(user_messages[-50:]))
+        else:
+            await update.message.reply_text("MSGS:")
 
 def main():
-    # Замени на свой токен бота
-    TOKEN = "8623096705:AAGTHypGpra_zTN2JP5OLjTJMRm8tNoOw3Y"
-    
-    app = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("adduser", add_user))
-    app.add_handler(CommandHandler("send", send_message))
     app.add_handler(CallbackQueryHandler(button_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("🤖 Бот запущен!")
-    print(f"🔑 Ключ шифрования: {ENCRYPTION_KEY.decode()}")
+    print(f"🔑 Bot Token: {BOT_TOKEN}")
+    print(f"🔐 Ключ шифрования: {ENCRYPTION_KEY.decode()}")
+    print("\nПриложение будет общаться напрямую с ботом через Telegram API")
     
-    # Fix for Python 3.14
+    # Fix for Python 3.14 asyncio event loop
     import asyncio
-    try:
-        asyncio.get_event_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
+    import sys
     
-    app.run_polling()
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    try:
+        app.run_polling()
+    finally:
+        loop.close()
 
 if __name__ == '__main__':
     main()

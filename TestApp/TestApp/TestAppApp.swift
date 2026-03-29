@@ -6,12 +6,17 @@ struct TestAppApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(settings)
-                .preferredColorScheme(
-                    settings.theme == "light" ? .light :
-                    settings.theme == "dark" ? .dark : nil
-                )
+            if settings.isAuthenticated {
+                ContentView()
+                    .environmentObject(settings)
+                    .preferredColorScheme(
+                        settings.theme == "light" ? .light :
+                        settings.theme == "dark" ? .dark : nil
+                    )
+            } else {
+                AuthView()
+                    .environmentObject(settings)
+            }
         }
     }
 }
