@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 import json
 
 # Admin Telegram IDs
-ADMIN_IDS = [123456789]  # Замени на свой Telegram ID
+ADMIN_IDS = [8434056844]  # Замени на свой Telegram ID
 
 # Encryption key
 ENCRYPTION_KEY = Fernet.generate_key()
@@ -168,7 +168,7 @@ async def send_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     # Замени на свой токен бота
-    TOKEN = "YOUR_BOT_TOKEN_HERE"
+    TOKEN = "8623096705:AAGTHypGpra_zTN2JP5OLjTJMRm8tNoOw3Y"
     
     app = Application.builder().token(TOKEN).build()
     
@@ -179,6 +179,13 @@ def main():
     
     print("🤖 Бот запущен!")
     print(f"🔑 Ключ шифрования: {ENCRYPTION_KEY.decode()}")
+    
+    # Fix for Python 3.14
+    import asyncio
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
     
     app.run_polling()
 
