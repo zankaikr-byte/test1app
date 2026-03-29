@@ -2,6 +2,37 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var searchText = ""
+    @State private var selectedTab = 0
+    
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            ChatsListView()
+                .tabItem {
+                    Image(systemName: "message.fill")
+                    Text("Chats")
+                }
+                .tag(0)
+            
+            ContactsView()
+                .tabItem {
+                    Image(systemName: "person.2.fill")
+                    Text("Contacts")
+                }
+                .tag(1)
+            
+            SettingsView()
+                .tabItem {
+                    Image(systemName: "gearshape.fill")
+                    Text("Settings")
+                }
+                .tag(2)
+        }
+        .accentColor(.blue)
+    }
+}
+
+struct ChatsListView: View {
+    @State private var searchText = ""
     
     var body: some View {
         NavigationView {
@@ -28,7 +59,10 @@ struct ContentView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(mockChats) { chat in
-                            ChatRow(chat: chat)
+                            NavigationLink(destination: ChatView(chat: chat)) {
+                                ChatRow(chat: chat)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                             Divider()
                                 .padding(.leading, 76)
                         }
@@ -44,6 +78,66 @@ struct ContentView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+struct ContactsView: View {
+    var body: some View {
+        NavigationView {
+            List {
+                Section {
+                    ContactRow(name: "Invite Friends", icon: "person.badge.plus", color: .blue)
+                    ContactRow(name: "Find People Nearby", icon: "location.fill", color: .blue)
+                }
+                
+                Section(header: Text("SORTED BY LAST SEEN")) {
+                    ForEach(mockContacts) { contact in
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(contact.color)
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Text(contact.initials)
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 16, weight: .medium))
+                                )
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(contact.name)
+                                    .font(.system(size: 17))
+                                Text(contact.status)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Contacts")
+            .navigationBarTitleDisplayMode(.large)
+        }
+    }
+}
+
+struct ContactRow: View {
+    let name: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(color)
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Image(systemName: icon)
+                        .foregroundColor(.white)
+                )
+            
+            Text(name)
+                .font(.system(size: 17))
+                .foregroundColor(.blue)
         }
     }
 }
@@ -67,6 +161,7 @@ struct ChatRow: View {
                 HStack {
                     Text(chat.name)
                         .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
                     Spacer()
                     Text(chat.time)
                         .font(.system(size: 14))
@@ -113,6 +208,14 @@ struct Chat: Identifiable {
     let initials: String
 }
 
+struct Contact: Identifiable {
+    let id = UUID()
+    let name: String
+    let status: String
+    let color: Color
+    let initials: String
+}
+
 let mockChats = [
     Chat(name: "Saved Messages", lastMessage: "You: Test message", time: "12:30", unreadCount: 0, isRead: true, color: .blue, initials: "📌"),
     Chat(name: "John Doe", lastMessage: "Hey! How are you?", time: "11:45", unreadCount: 3, isRead: false, color: .green, initials: "JD"),
@@ -121,6 +224,13 @@ let mockChats = [
     Chat(name: "Dev Team", lastMessage: "Bob: Push to production?", time: "Yesterday", unreadCount: 5, isRead: false, color: .purple, initials: "DT"),
     Chat(name: "Sarah", lastMessage: "See you tomorrow!", time: "Monday", unreadCount: 0, isRead: true, color: .red, initials: "S"),
     Chat(name: "Crypto News", lastMessage: "Bitcoin hits new high", time: "Sunday", unreadCount: 0, isRead: false, color: .cyan, initials: "CN"),
+]
+
+let mockContacts = [
+    Contact(name: "Alice Johnson", status: "online", color: .blue, initials: "AJ"),
+    Contact(name: "Bob Smith", status: "last seen recently", color: .green, initials: "BS"),
+    Contact(name: "Charlie Brown", status: "last seen 2 hours ago", color: .orange, initials: "CB"),
+    Contact(name: "Diana Prince", status: "last seen yesterday", color: .purple, initials: "DP"),
 ]
 
 struct ContentView_Previews: PreviewProvider {
