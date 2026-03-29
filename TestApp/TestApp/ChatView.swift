@@ -74,7 +74,6 @@ struct ChatView: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .tabBar)
     }
 }
 
