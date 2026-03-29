@@ -1,84 +1,143 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var searchText = ""
     @State private var selectedTab = 0
+    @EnvironmentObject var settings: AppSettings
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            ChatsListView()
-                .tabItem {
-                    Image(systemName: "message.fill")
-                    Text("Chats")
-                }
-                .tag(0)
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selectedTab) {
+                ChatsListView()
+                    .tag(0)
+                
+                ContactsView()
+                    .tag(1)
+                
+                SettingsView()
+                    .tag(2)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
             
-            ContactsView()
-                .tabItem {
-                    Image(systemName: "person.2.fill")
-                    Text("Contacts")
+            // Custom Tab Bar with blur
+            HStack(spacing: 0) {
+                TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0) {
+                    selectedTab = 0
                 }
-                .tag(1)
-            
-            SettingsView()
-                .tabItem {
-                    Image(systemName: "gearshape.fill")
-                    Text("Settings")
+                TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1) {
+                    selectedTab = 1
                 }
-                .tag(2)
+                TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2) {
+                    selectedTab = 2
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+            .cornerRadius(20)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
         }
-        .accentColor(.blue)
+    }
+}
+
+struct TabBarButton: View {
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                Text(title)
+                    .font(.system(size: 11))
+            }
+            .foregroundColor(isSelected ? .blue : .gray)
+            .frame(maxWidth: .infinity)
+        }
     }
 }
 
 struct ChatsListView: View {
     @State private var searchText = ""
+    @State private var isEditMode = false
+    @EnvironmentObject var settings: AppSettings
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Search bar
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
-                    TextField("Search", text: $searchText)
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
+            ZStack {
+                // Background
+                backgroundView
+                
+                VStack(spacing: 0) {
+                    // Search bar
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.gray)
+                        TextField(settings.localizedString("search"), text: $searchText)
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
+                            }
                         }
                     }
-                }
-                .padding(8)
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                
-                // Chats list
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(mockChats) { chat in
-                            NavigationLink(destination: ChatView(chat: chat)) {
-                                ChatRow(chat: chat)
+                    .padding(8)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    
+                    // Chats list
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(mockChats) { chat in
+                                NavigationLink(destination: ChatView(chat: chat)) {
+                                    ChatRow(chat: chat, isEditMode: isEditMode)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                Divider()
+                                    .padding(.leading, 76)
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            Divider()
-                                .padding(.leading, 76)
                         }
                     }
                 }
             }
-            .navigationTitle("Telegram")
+            .navigationTitle(settings.localizedString("chats"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(isEditMode ? "Done" : settings.localizedString("edit")) {
+                        isEditMode.toggle()
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {}) {
-                        Image(systemName: "square.and.pencil")
+                    HStack {
+                        Button(action: {}) {
+                            Image(systemName: "magnifyingglass")
+                        }
+                        Button(action: {}) {
+                            Image(systemName: "square.and.pencil")
+                        }
                     }
                 }
             }
         }
+    }
+    
+    var backgroundView: some View {
+        Group {
+            if settings.chatBackground == "gradient" {
+                LinearGradient(colors: [.blue.opacity(0.3), .purple.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            } else if settings.chatBackground == "pattern" {
+                Color.gray.opacity(0.1)
+            } else {
+                Color(.systemBackground)
+            }
+        }
+        .ignoresSafeArea()
     }
 }
 
@@ -144,9 +203,17 @@ struct ContactRow: View {
 
 struct ChatRow: View {
     let chat: Chat
+    var isEditMode: Bool = false
     
     var body: some View {
         HStack(spacing: 12) {
+            if isEditMode {
+                Button(action: {}) {
+                    Image(systemName: "circle")
+                        .foregroundColor(.blue)
+                }
+            }
+            
             // Avatar
             Circle()
                 .fill(chat.color)
@@ -193,7 +260,7 @@ struct ChatRow: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))
+        .background(Color(.systemBackground).opacity(0.8))
     }
 }
 

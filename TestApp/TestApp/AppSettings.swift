@@ -1,0 +1,61 @@
+import SwiftUI
+
+class AppSettings: ObservableObject {
+    @Published var language: String = "ru"
+    @Published var theme: String = "system"
+    @Published var chatBackground: String = "default"
+    
+    func localizedString(_ key: String) -> String {
+        let translations: [String: [String: String]] = [
+            "ru": [
+                "chats": "Чаты",
+                "contacts": "Контакты",
+                "settings": "Настройки",
+                "search": "Поиск",
+                "edit": "Изменить",
+                "account": "Аккаунт",
+                "privacy": "Приватность",
+                "notifications": "Уведомления",
+                "data": "Данные",
+                "appearance": "Оформление",
+                "language": "Язык",
+                "stickers": "Стикеры",
+                "profile": "Профиль",
+                "phone": "Телефон",
+                "username": "Имя пользователя",
+                "bio": "О себе",
+                "chatSettings": "Настройки чата",
+                "background": "Фон чата",
+                "themes": "Темы",
+                "lightTheme": "Светлая",
+                "darkTheme": "Темная",
+                "systemTheme": "Системная"
+            ],
+            "en": [
+                "chats": "Chats",
+                "contacts": "Contacts",
+                "settings": "Settings",
+                "search": "Search",
+                "edit": "Edit",
+                "account": "Account",
+                "privacy": "Privacy and Security",
+                "notifications": "Notifications",
+                "data": "Data and Storage",
+                "appearance": "Appearance",
+                "language": "Language",
+                "stickers": "Stickers",
+                "profile": "Profile",
+                "phone": "Phone",
+                "username": "Username",
+                "bio": "Bio",
+                "chatSettings": "Chat Settings",
+                "background": "Chat Background",
+                "themes": "Themes",
+                "lightTheme": "Light",
+                "darkTheme": "Dark",
+                "systemTheme": "System"
+            ]
+        ]
+        return translations[language]?[key] ?? key
+    }
+}
