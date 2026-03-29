@@ -6,7 +6,7 @@ class NetworkManager: ObservableObject {
     static let shared = NetworkManager()
     
     // Замени на IP твоего компьютера где запущен бот
-    private let baseURL = "http://26.72.5.150:5000/api"
+    private let baseURL = "http://172.20.10.2:5000/api"
     
     func login(phone: String, completion: @escaping (Result<UserData, Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/login") else {
