@@ -17,6 +17,7 @@ class NetworkManager: ObservableObject {
     
     @Published var currentIP: String = ""
     @Published var isSearching: Bool = false
+    @Published var ping: Int = 0
     
     private var baseURL: String {
         return "http://\(currentIP):5000/api"
@@ -47,11 +48,16 @@ class NetworkManager: ObservableObject {
         var request = URLRequest(url: url)
         request.timeoutInterval = 2.0
         
+        let startTime = Date()
+        
         URLSession.shared.dataTask(with: request) { data, response, error in
+            let pingTime = Int(Date().timeIntervalSince(startTime) * 1000)
+            
             if error == nil, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                print("✅ Сервер найден: \(testIP)")
+                print("✅ Сервер найден: \(testIP) (пинг: \(pingTime)ms)")
                 DispatchQueue.main.async {
                     self.currentIP = testIP
+                    self.ping = pingTime
                     self.isSearching = false
                     completion(true)
                 }
@@ -64,6 +70,26 @@ class NetworkManager: ObservableObject {
     
     func setCustomIP(_ ip: String) {
         currentIP = ip
+        measurePing()
+    }
+    
+    private func measurePing() {
+        guard let url = URL(string: "http://\(currentIP):5000/api/users") else { return }
+        
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2.0
+        
+        let startTime = Date()
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            let pingTime = Int(Date().timeIntervalSince(startTime) * 1000)
+            
+            if error == nil {
+                DispatchQueue.main.async {
+                    self.ping = pingTime
+                }
+            }
+        }.resume()
     }
     
     func requestCode(phone: String, completion: @escaping (Result<String, Error>) -> Void) {

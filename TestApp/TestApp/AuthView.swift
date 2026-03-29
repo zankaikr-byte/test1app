@@ -47,12 +47,21 @@ struct AuthView: View {
                             .foregroundColor(.red)
                     }
                     
-                    Text(networkManager.isSearching ? "Поиск сервера..." : 
-                         !networkManager.currentIP.isEmpty ? "Сервер: \(networkManager.currentIP)" : 
-                         "Сервер не найден")
-                        .foregroundColor(.white.opacity(0.8))
-                        .font(.caption)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(networkManager.isSearching ? "Поиск сервера..." : 
+                             !networkManager.currentIP.isEmpty ? "Сервер: \(networkManager.currentIP)" : 
+                             "Сервер не найден")
+                            .foregroundColor(.white.opacity(0.8))
+                            .font(.caption)
+                        
+                        if networkManager.ping > 0 {
+                            Text("Пинг: \(networkManager.ping)ms")
+                                .foregroundColor(.green.opacity(0.8))
+                                .font(.caption2)
+                        }
+                    }
                 }
+                .padding(.horizontal, 40)
                 
                 Button(action: { showIPInput.toggle() }) {
                     Text(showIPInput ? "Скрыть настройки" : "⚙️ Настроить IP")
@@ -72,7 +81,8 @@ struct AuthView: View {
                                         .foregroundColor(.white.opacity(0.4))
                                 }
                                 .foregroundColor(.white)
-                                .keyboardType(.decimalPad)
+                                .keyboardType(.URL)
+                                .autocapitalization(.none)
                         }
                         .padding()
                         .background(Color.white.opacity(0.2))
