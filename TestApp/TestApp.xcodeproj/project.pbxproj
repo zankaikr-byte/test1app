@@ -369,7 +369,7 @@
 			};
 			name = Release;
 		};
-		A1000020000000000000001 /* Debug */ = {
+		A1000050000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
@@ -400,7 +400,7 @@
 			};
 			name = Debug;
 		};
-		A1000021000000000000001 /* Release */ = {
+		A1000051000000000000001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
@@ -431,7 +431,7 @@
 			};
 			name = Release;
 		};
-		A1000043000000000000001 /* Debug */ = {
+		A1000060000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -458,7 +458,7 @@
 			};
 			name = Debug;
 		};
-		A1000044000000000000001 /* Release */ = {
+		A1000061000000000000001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -491,8 +491,8 @@
 		A1000013000000000000001 /* Build configuration list for PBXNativeTarget "TestApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1000020000000000000001 /* Debug */,
-				A1000021000000000000001 /* Release */,
+				A1000050000000000000001 /* Debug */,
+				A1000051000000000000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -509,8 +509,8 @@
 		A1000040000000000000001 /* Build configuration list for PBXNativeTarget "TestAppWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1000043000000000000001 /* Debug */,
-				A1000044000000000000001 /* Release */,
+				A1000060000000000000001 /* Debug */,
+				A1000061000000000000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
