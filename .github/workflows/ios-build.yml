@@ -22,14 +22,23 @@ jobs:
           -scheme TestApp \
           -sdk iphoneos \
           -configuration Release \
+          -archivePath $PWD/build/TestApp.xcarchive \
           -destination 'generic/platform=iOS' \
-          clean build \
+          clean archive \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO
+    
+    - name: Create IPA
+      run: |
+        cd TestApp
+        mkdir -p Payload
+        cp -r build/TestApp.xcarchive/Products/Applications/TestApp.app Payload/
+        zip -r TestApp.ipa Payload
+        rm -rf Payload
     
     - name: Archive build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: TestApp-iOS
-        path: TestApp/build/Release-iphoneos/TestApp.app
+        path: TestApp/TestApp.ipa
