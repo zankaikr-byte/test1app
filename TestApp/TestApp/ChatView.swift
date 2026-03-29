@@ -17,7 +17,7 @@ struct ChatView: View {
                 .padding()
             }
             
-            // Input bar
+            // Input bar with blur
             HStack(spacing: 8) {
                 Button(action: {}) {
                     Image(systemName: "plus.circle.fill")
@@ -37,8 +37,7 @@ struct ChatView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .background(Color(.systemGray6))
-                .cornerRadius(20)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
                 
                 if messageText.isEmpty {
                     Button(action: {}) {
@@ -56,7 +55,7 @@ struct ChatView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            .background(Color(.systemBackground))
+            .background(.ultraThinMaterial)
         }
         .navigationTitle(chat.name)
         .navigationBarTitleDisplayMode(.inline)
