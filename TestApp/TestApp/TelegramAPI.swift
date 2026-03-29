@@ -97,6 +97,58 @@ class NetworkManager: ObservableObject {
             }
         }.resume()
     }
+    
+    func getChats(phone: String, completion: @escaping (Result<[ChatData], Error>) -> Void) {
+        guard let url = URL(string: "\(baseURL)/chats?phone=\(phone)") else {
+            completion(.failure(NetworkError.invalidURL))
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(NetworkError.noData))
+                return
+            }
+            
+            do {
+                let chats = try JSONDecoder().decode([ChatData].self, from: data)
+                completion(.success(chats))
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+    
+    func getMessages(phone: String, contact: String, completion: @escaping (Result<[MessageData], Error>) -> Void) {
+        guard let url = URL(string: "\(baseURL)/messages?phone=\(phone)&contact=\(contact)") else {
+            completion(.failure(NetworkError.invalidURL))
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(NetworkError.noData))
+                return
+            }
+            
+            do {
+                let messages = try JSONDecoder().decode([MessageData].self, from: data)
+                completion(.success(messages))
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
 }
 
 struct UserData: Codable {
@@ -104,9 +156,25 @@ struct UserData: Codable {
     let phone: String
 }
 
+struct ChatData: Codable {
+    let contact_phone: String
+    let contact_name: String
+    let last_message: String
+    let last_message_time: String
+    let unread_count: Int
+}
+
+struct MessageData: Codable {
+    let from: String
+    let to: String
+    let text: String
+    let timestamp: String
+}
+
 enum NetworkError: Error {
     case invalidURL
     case noData
     case userNotFound
+    case invalidCode
 }
 
