@@ -6,14 +6,6 @@ struct ContentView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Background gradient
-            LinearGradient(
-                colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.6), Color.pink.opacity(0.4)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
             TabView(selection: $selectedTab) {
                 ChatsListView()
                     .tag(0)
@@ -26,80 +18,24 @@ struct ContentView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             
-            // Glass morphism Tab Bar
+            // Custom Tab Bar with blur
             HStack(spacing: 0) {
-                TabBarButton(
-                    icon: "person.2.fill",
-                    title: settings.localizedString("contacts"),
-                    badge: nil,
-                    isSelected: selectedTab == 0
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = 0
-                    }
+                TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0) {
+                    selectedTab = 0
                 }
-                
-                TabBarButton(
-                    icon: "message.fill",
-                    title: settings.localizedString("chats"),
-                    badge: 133,
-                    isSelected: selectedTab == 1
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = 1
-                    }
+                TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1) {
+                    selectedTab = 1
                 }
-                
-                TabBarButton(
-                    icon: "gearshape.fill",
-                    title: settings.localizedString("settings"),
-                    badge: nil,
-                    isSelected: selectedTab == 2
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = 2
-                    }
+                TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2) {
+                    selectedTab = 2
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                ZStack {
-                    // Blur effect
-                    RoundedRectangle(cornerRadius: 30)
-                        .fill(.ultraThinMaterial)
-                    
-                    // Subtle gradient overlay
-                    RoundedRectangle(cornerRadius: 30)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.1),
-                                    Color.white.opacity(0.05)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                    
-                    // Border
-                    RoundedRectangle(cornerRadius: 30)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.3),
-                                    Color.white.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                }
-            )
-            .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial)
+            .cornerRadius(20)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
         }
     }
 }
@@ -107,48 +43,19 @@ struct ContentView: View {
 struct TabBarButton: View {
     let icon: String
     let title: String
-    let badge: Int?
     let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: icon)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(
-                            isSelected ?
-                            LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing) :
-                            LinearGradient(colors: [.gray, .gray], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                    
-                    if let badge = badge {
-                        Text("\(badge)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(Color.red)
-                            )
-                            .offset(x: 12, y: -8)
-                    }
-                }
-                
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
                 Text(title)
-                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .blue : .gray)
+                    .font(.system(size: 11))
             }
+            .foregroundColor(isSelected ? .blue : .gray)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? Color.blue.opacity(0.15) : Color.clear)
-            )
-            .scaleEffect(isSelected ? 1.05 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
         }
     }
 }
@@ -165,7 +72,7 @@ struct ChatsListView: View {
                 backgroundView
                 
                 VStack(spacing: 0) {
-                    // Search bar with blur
+                    // Search bar
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.gray)
@@ -177,8 +84,9 @@ struct ChatsListView: View {
                             }
                         }
                     }
-                    .padding(10)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(8)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(10)
                     .padding(.horizontal)
                     .padding(.vertical, 8)
                     
@@ -188,15 +96,12 @@ struct ChatsListView: View {
                             ForEach(mockChats) { chat in
                                 NavigationLink(destination: ChatView(chat: chat)) {
                                     ChatRow(chat: chat, isEditMode: isEditMode)
-                                        .background(.ultraThinMaterial)
-                                        .cornerRadius(12)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                Divider()
+                                    .padding(.leading, 76)
                             }
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -207,20 +112,14 @@ struct ChatsListView: View {
                     Button(isEditMode ? "Done" : settings.localizedString("edit")) {
                         isEditMode.toggle()
                     }
-                    .padding(8)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 8) {
+                    HStack {
                         Button(action: {}) {
                             Image(systemName: "magnifyingglass")
-                                .padding(8)
-                                .background(.ultraThinMaterial, in: Circle())
                         }
                         Button(action: {}) {
                             Image(systemName: "square.and.pencil")
-                                .padding(8)
-                                .background(.ultraThinMaterial, in: Circle())
                         }
                     }
                 }
@@ -315,16 +214,15 @@ struct ChatRow: View {
                 }
             }
             
-            // Avatar with blur
+            // Avatar
             Circle()
-                .fill(chat.color.opacity(0.8))
+                .fill(chat.color)
                 .frame(width: 52, height: 52)
                 .overlay(
                     Text(chat.initials)
                         .foregroundColor(.white)
                         .font(.system(size: 20, weight: .medium))
                 )
-                .shadow(color: chat.color.opacity(0.3), radius: 8)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -354,17 +252,15 @@ struct ChatRow: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
-                            .background(
-                                Capsule()
-                                    .fill(.blue)
-                                    .shadow(color: .blue.opacity(0.5), radius: 4)
-                            )
+                            .background(Color.blue)
+                            .clipShape(Capsule())
                     }
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(.systemBackground).opacity(0.8))
     }
 }
 
