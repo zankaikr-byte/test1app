@@ -8,6 +8,81 @@ class NetworkManager: ObservableObject {
     // Замени на IP твоего компьютера где запущен бот
     private let baseURL = "http://172.20.10.2:5000/api"
     
+    func requestCode(phone: String, completion: @escaping (Result<String, Error>) -> Void) {
+        guard let url = URL(string: "\(baseURL)/request_code") else {
+            completion(.failure(NetworkError.invalidURL))
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = ["phone": phone]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(NetworkError.noData))
+                return
+            }
+            
+            do {
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                if let message = json?["message"] as? String {
+                    completion(.success(message))
+                } else {
+                    completion(.failure(NetworkError.userNotFound))
+                }
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+    
+    func verifyCode(phone: String, code: String, completion: @escaping (Result<UserData, Error>) -> Void) {
+        guard let url = URL(string: "\(baseURL)/verify_code") else {
+            completion(.failure(NetworkError.invalidURL))
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = ["phone": phone, "code": code]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(NetworkError.noData))
+                return
+            }
+            
+            do {
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                if let name = json?["name"] as? String, let phone = json?["phone"] as? String {
+                    let userData = UserData(name: name, phone: phone)
+                    completion(.success(userData))
+                } else {
+                    completion(.failure(NetworkError.invalidCode))
+                }
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+    
     func login(phone: String, completion: @escaping (Result<UserData, Error>) -> Void) {
         guard let url = URL(string: "\(baseURL)/login") else {
             completion(.failure(NetworkError.invalidURL))
