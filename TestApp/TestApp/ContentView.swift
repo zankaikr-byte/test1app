@@ -20,30 +20,13 @@ struct ContentView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             
-            // Custom Tab Bar - Telegram style capsule with blur
+            // Custom Tab Bar - Telegram style with Glass effect
             if !hideTabBar {
-                HStack(spacing: 32) {
-                    TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1, badge: nil) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedTab = 1
-                        }
-                    }
-                    TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0, badge: totalUnreadCount > 0 ? totalUnreadCount : nil) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedTab = 0
-                        }
-                    }
-                    TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2, badge: nil) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedTab = 2
-                        }
-                    }
-                }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
-                .background(.ultraThinMaterial)
-                .clipShape(Capsule())
-                .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
+                GlassTabBar(
+                    selectedTab: $selectedTab,
+                    totalUnreadCount: totalUnreadCount,
+                    settings: settings
+                )
                 .padding(.horizontal, 40)
                 .padding(.bottom, 20)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -451,6 +434,139 @@ struct ChatRow: View {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "MMM d"
             return dateFormatter.string(from: date)
+        }
+    }
+}
+
+// MARK: - Glass Tab Bar Component
+struct GlassTabBar: View {
+    @Binding var selectedTab: Int
+    let totalUnreadCount: Int
+    let settings: AppSettings
+    @State private var selectionOffset: CGFloat = 0
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Glass background container
+                GlassBackground()
+                    .frame(height: 64)
+                
+                // Selection indicator (liquid lens effect simulation)
+                SelectionIndicator(selectedTab: selectedTab)
+                    .frame(height: 64)
+                
+                // Tab buttons
+                HStack(spacing: 0) {
+                    TabBarButton(
+                        icon: "person.2.fill",
+                        title: settings.localizedString("contacts"),
+                        isSelected: selectedTab == 1,
+                        badge: nil
+                    ) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            selectedTab = 1
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    
+                    TabBarButton(
+                        icon: "message.fill",
+                        title: settings.localizedString("chats"),
+                        isSelected: selectedTab == 0,
+                        badge: totalUnreadCount > 0 ? totalUnreadCount : nil
+                    ) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            selectedTab = 0
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    
+                    TabBarButton(
+                        icon: "gearshape.fill",
+                        title: settings.localizedString("settings"),
+                        isSelected: selectedTab == 2,
+                        badge: nil
+                    ) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                            selectedTab = 2
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 8)
+            }
+        }
+        .frame(height: 64)
+    }
+}
+
+// MARK: - Glass Background
+struct GlassBackground: View {
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        ZStack {
+            // Base blur
+            RoundedRectangle(cornerRadius: 32)
+                .fill(.ultraThinMaterial)
+            
+            // Glass tint overlay
+            RoundedRectangle(cornerRadius: 32)
+                .fill(
+                    colorScheme == .dark
+                        ? Color.white.opacity(0.08)
+                        : Color.white.opacity(0.6)
+                )
+                .blendMode(colorScheme == .dark ? .plusLighter : .normal)
+            
+            // Inner glow
+            RoundedRectangle(cornerRadius: 32)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.3 : 0.6),
+                            Color.white.opacity(0.0),
+                            Color.white.opacity(colorScheme == .dark ? 0.15 : 0.3)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+            
+            // Outer shadow
+            RoundedRectangle(cornerRadius: 32)
+                .fill(Color.clear)
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
+                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
+        }
+    }
+}
+
+// MARK: - Selection Indicator (Liquid Lens Simulation)
+struct SelectionIndicator: View {
+    let selectedTab: Int
+    @Environment(\.colorScheme) var colorScheme
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let itemWidth = geometry.size.width / 3
+            let offset = CGFloat(selectedTab == 1 ? 0 : selectedTab == 0 ? 1 : 2) * itemWidth
+            
+            ZStack {
+                // Selection blob
+                Capsule()
+                    .fill(
+                        colorScheme == .dark
+                            ? Color.white.opacity(0.12)
+                            : Color.white.opacity(0.4)
+                    )
+                    .frame(width: itemWidth - 16, height: 48)
+                    .offset(x: offset - geometry.size.width / 2 + itemWidth / 2)
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    .blendMode(.plusLighter)
+            }
         }
     }
 }
