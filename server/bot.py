@@ -37,6 +37,7 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (phone TEXT PRIMARY KEY,
                   name TEXT,
+                  username TEXT,
                   is_anonymous INTEGER,
                   created_at TEXT)''')
     
@@ -121,15 +122,15 @@ def get_user(phone: str):
     user = c.fetchone()
     conn.close()
     if user:
-        return {'phone': user[0], 'name': user[1], 'is_anonymous': user[2], 'created_at': user[3]}
+        return {'phone': user[0], 'name': user[1], 'username': user[2] if len(user) > 2 else '', 'is_anonymous': user[3] if len(user) > 3 else user[2], 'created_at': user[4] if len(user) > 4 else user[3]}
     return None
 
 def create_user(phone: str, name: str, is_anonymous: bool):
     """Создать пользователя в БД"""
     conn = sqlite3.connect('telegram_clone.db')
     c = conn.cursor()
-    c.execute('INSERT INTO users VALUES (?, ?, ?, ?)',
-              (phone, name, 1 if is_anonymous else 0, datetime.now().isoformat()))
+    c.execute('INSERT INTO users VALUES (?, ?, ?, ?, ?)',
+              (phone, name, '', 1 if is_anonymous else 0, datetime.now().isoformat()))
     conn.commit()
     conn.close()
 
@@ -225,7 +226,8 @@ def verify_code():
     return jsonify({
         'success': True,
         'name': user['name'],
-        'phone': user['phone']
+        'phone': user['phone'],
+        'username': user.get('username', '')
     })
 
 @app_flask.route('/api/login', methods=['POST'])
@@ -268,8 +270,8 @@ def search():
     
     conn = sqlite3.connect('telegram_clone.db')
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE LOWER(name) LIKE ? OR phone LIKE ?',
-              (f'%{query}%', f'%{query}%'))
+    c.execute('SELECT * FROM users WHERE LOWER(name) LIKE ? OR phone LIKE ? OR LOWER(username) LIKE ?',
+              (f'%{query}%', f'%{query}%', f'%{query}%'))
     users = c.fetchall()
     conn.close()
     
@@ -277,7 +279,8 @@ def search():
     for user in users[:10]:
         results.append({
             'phone': user[0],
-            'name': user[1]
+            'name': user[1],
+            'username': user[2] if len(user) > 2 else ''
         })
     
     return jsonify(results)
@@ -379,6 +382,31 @@ def get_codes():
             'code': code
         })
     return jsonify(codes_list)
+
+@app_flask.route('/api/update_profile', methods=['POST'])
+def update_profile():
+    """Обновить профиль пользователя"""
+    data = request.json
+    phone = data.get('phone')
+    name = data.get('name')
+    username = data.get('username')
+    
+    user = get_user(phone)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    conn = sqlite3.connect('telegram_clone.db')
+    c = conn.cursor()
+    c.execute('UPDATE users SET name = ?, username = ? WHERE phone = ?',
+              (name, username, phone))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({
+        'success': True,
+        'name': name,
+        'username': username
+    })
 
 @app_flask.route('/')
 def index():

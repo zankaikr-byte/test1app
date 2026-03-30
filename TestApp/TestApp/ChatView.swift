@@ -1,17 +1,65 @@
 import SwiftUI
 
 struct ChatView: View {
-    let chat: Chat
+    let contactPhone: String
+    let contactName: String
+    @Binding var hideTabBar: Bool
     @State private var messageText = ""
+    @State private var messages: [MessageData] = []
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var settings: AppSettings
+    
+    var avatarColor: Color {
+        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .red, .cyan, .indigo]
+        let hash = abs(contactPhone.hashValue)
+        return colors[hash % colors.count]
+    }
     
     var body: some View {
         VStack(spacing: 0) {
             // Messages
             ScrollView {
                 VStack(spacing: 12) {
-                    ForEach(mockMessages) { message in
-                        MessageBubble(message: message)
+                    if messages.isEmpty {
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(avatarColor)
+                                    .frame(width: 80, height: 80)
+                                
+                                if contactName.isEmpty {
+                                    Image(systemName: "person.fill")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 40))
+                                } else {
+                                    Text(String(contactName.prefix(2)).uppercased())
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 32, weight: .medium))
+                                }
+                            }
+                            .padding(.top, 40)
+                            
+                            Text(contactName.isEmpty ? "User" : contactName)
+                                .font(.system(size: 24, weight: .semibold))
+                            
+                            Text(contactPhone)
+                                .font(.system(size: 15))
+                                .foregroundColor(.gray)
+                            
+                            Text("Нет сообщений")
+                                .font(.system(size: 15))
+                                .foregroundColor(.gray)
+                                .padding(.top, 8)
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        ForEach(messages, id: \.timestamp) { message in
+                            MessageBubble(message: message, currentUserPhone: settings.userPhone)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.8).combined(with: .opacity),
+                                    removal: .scale(scale: 0.8).combined(with: .opacity)
+                                ))
+                        }
                     }
                 }
                 .padding()
@@ -26,7 +74,7 @@ struct ChatView: View {
                 }
                 
                 HStack {
-                    TextField("Message", text: $messageText)
+                    TextField("Сообщение", text: $messageText)
                         .padding(.vertical, 8)
                     
                     if !messageText.isEmpty {
@@ -47,7 +95,7 @@ struct ChatView: View {
                             .foregroundColor(.blue)
                     }
                 } else {
-                    Button(action: {}) {
+                    Button(action: sendMessage) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 28))
                             .foregroundColor(.blue)
@@ -58,19 +106,74 @@ struct ChatView: View {
             .padding(.vertical, 8)
             .background(Color(.systemBackground))
         }
-        .navigationTitle(chat.name)
+        .navigationTitle(contactName.isEmpty ? "User" : contactName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {}) {
-                    Circle()
-                        .fill(chat.color)
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Text(chat.initials)
+                    ZStack {
+                        Circle()
+                            .fill(avatarColor)
+                            .frame(width: 32, height: 32)
+                        
+                        if contactName.isEmpty {
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16))
+                        } else {
+                            Text(String(contactName.prefix(2)).uppercased())
                                 .foregroundColor(.white)
                                 .font(.system(size: 14, weight: .medium))
-                        )
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                hideTabBar = true
+            }
+            loadMessages()
+        }
+        .onDisappear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                hideTabBar = false
+            }
+        }
+    }
+    
+    func loadMessages() {
+        NetworkManager.shared.getMessages(phone: settings.userPhone, contact: contactPhone) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let loadedMessages):
+                    self.messages = loadedMessages
+                case .failure(let error):
+                    print("Error loading messages: \(error)")
+                }
+            }
+        }
+    }
+    
+    func sendMessage() {
+        guard !messageText.isEmpty else { return }
+        
+        let text = messageText
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            messageText = ""
+        }
+        
+        NetworkManager.shared.sendMessage(from: settings.userPhone, to: contactPhone, text: text) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    // Reload messages with animation
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        loadMessages()
+                    }
+                case .failure(let error):
+                    print("Error sending message: \(error)")
                 }
             }
         }
@@ -78,55 +181,52 @@ struct ChatView: View {
 }
 
 struct MessageBubble: View {
-    let message: Message
+    let message: MessageData
+    let currentUserPhone: String
+    
+    var isOutgoing: Bool {
+        return message.from == currentUserPhone
+    }
     
     var body: some View {
         HStack {
-            if message.isOutgoing {
+            if isOutgoing {
                 Spacer()
             }
             
-            VStack(alignment: message.isOutgoing ? .trailing : .leading, spacing: 4) {
+            VStack(alignment: isOutgoing ? .trailing : .leading, spacing: 4) {
                 Text(message.text)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(message.isOutgoing ? Color.blue : Color(.systemGray5))
-                    .foregroundColor(message.isOutgoing ? .white : .primary)
+                    .background(isOutgoing ? Color.blue : Color(.systemGray5))
+                    .foregroundColor(isOutgoing ? .white : .primary)
                     .cornerRadius(18)
                 
                 HStack(spacing: 4) {
-                    Text(message.time)
+                    Text(formatTime(message.timestamp))
                         .font(.system(size: 12))
                         .foregroundColor(.gray)
                     
-                    if message.isOutgoing {
-                        Image(systemName: message.isRead ? "checkmark.circle.fill" : "checkmark.circle")
+                    if isOutgoing {
+                        Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 12))
-                            .foregroundColor(message.isRead ? .blue : .gray)
+                            .foregroundColor(.blue)
                     }
                 }
             }
             
-            if !message.isOutgoing {
+            if !isOutgoing {
                 Spacer()
             }
         }
     }
+    
+    func formatTime(_ isoString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: isoString) else { return "" }
+        
+        let timeFormatter = DateFormatter()
+        timeFormatter.timeStyle = .short
+        return timeFormatter.string(from: date)
+    }
 }
-
-struct Message: Identifiable {
-    let id = UUID()
-    let text: String
-    let time: String
-    let isOutgoing: Bool
-    let isRead: Bool
-}
-
-let mockMessages = [
-    Message(text: "Hey! How are you?", time: "10:30", isOutgoing: false, isRead: true),
-    Message(text: "I'm good, thanks! What about you?", time: "10:32", isOutgoing: true, isRead: true),
-    Message(text: "Great! Want to grab coffee later?", time: "10:33", isOutgoing: false, isRead: true),
-    Message(text: "Sure! What time works for you?", time: "10:35", isOutgoing: true, isRead: true),
-    Message(text: "How about 3 PM?", time: "10:36", isOutgoing: false, isRead: true),
-    Message(text: "Perfect! See you then 👍", time: "10:37", isOutgoing: true, isRead: false),
-]

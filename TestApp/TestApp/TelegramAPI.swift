@@ -308,11 +308,44 @@ class NetworkManager: ObservableObject {
             }
         }.resume()
     }
+    
+    func updateProfile(phone: String, name: String, username: String, completion: @escaping (Result<Bool, Error>) -> Void) {
+        guard let url = URL(string: "\(baseURL)/update_profile") else {
+            completion(.failure(NetworkError.invalidURL))
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "phone": phone,
+            "name": name,
+            "username": username
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            completion(.success(true))
+        }.resume()
+    }
 }
 
 struct UserData: Codable {
     let name: String
     let phone: String
+    let username: String?
+    
+    init(name: String, phone: String, username: String? = nil) {
+        self.name = name
+        self.phone = phone
+        self.username = username
+    }
 }
 
 struct ChatData: Codable {

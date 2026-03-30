@@ -2,12 +2,13 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = 0
+    @State private var hideTabBar = false
     @EnvironmentObject var settings: AppSettings
     
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
-                ChatsListView()
+                ChatsListView(hideTabBar: $hideTabBar)
                     .tag(0)
                 
                 ContactsView()
@@ -18,24 +19,67 @@ struct ContentView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             
-            // Custom Tab Bar with blur
-            HStack(spacing: 0) {
-                TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0) {
-                    selectedTab = 0
-                }
-                TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1) {
-                    selectedTab = 1
-                }
-                TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2) {
-                    selectedTab = 2
+            // Custom Tab Bar with Liquid Glass (iOS 26+) or blur (iOS 15-25)
+            if !hideTabBar {
+                if #available(iOS 26.0, *) {
+                    // iOS 26+ Liquid Glass effect
+                    GlassEffectContainer {
+                        HStack(spacing: 0) {
+                            TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedTab = 0
+                                }
+                            }
+                            TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedTab = 1
+                                }
+                            }
+                            TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedTab = 2
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .glassEffect()
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
+                } else {
+                    // iOS 15-25 standard blur
+                    HStack(spacing: 0) {
+                        TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedTab = 0
+                            }
+                        }
+                        TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedTab = 1
+                            }
+                        }
+                        TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedTab = 2
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
                 }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
-            .cornerRadius(20)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
         }
     }
 }
@@ -48,21 +92,47 @@ struct TabBarButton: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 24))
+            VStack(spacing: 6) {
+                ZStack {
+                    if isSelected {
+                        Circle()
+                            .fill(Color.blue.opacity(0.15))
+                            .frame(width: 44, height: 44)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(isSelected ? .blue : .gray)
+                        .symbolEffect(.bounce, value: isSelected)
+                }
+                
                 Text(title)
-                    .font(.system(size: 11))
+                    .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .blue : .gray)
             }
-            .foregroundColor(isSelected ? .blue : .gray)
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(TabBarButtonStyle())
+    }
+}
+
+struct TabBarButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
 struct ChatsListView: View {
     @State private var searchText = ""
     @State private var isEditMode = false
+    @State private var chats: [ChatData] = []
+    @State private var searchResults: [UserData] = []
+    @State private var isSearching = false
+    @Binding var hideTabBar: Bool
     @EnvironmentObject var settings: AppSettings
     
     var body: some View {
@@ -75,31 +145,97 @@ struct ChatsListView: View {
                     // Search bar
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
+                            .foregroundColor(searchText.isEmpty ? .gray : .blue)
+                            .animation(.easeInOut(duration: 0.2), value: searchText.isEmpty)
+                        
                         TextField(settings.localizedString("search"), text: $searchText)
+                            .onChange(of: searchText) { newValue in
+                                if !newValue.isEmpty {
+                                    performSearch(query: newValue)
+                                } else {
+                                    searchResults = []
+                                    isSearching = false
+                                }
+                            }
+                        
                         if !searchText.isEmpty {
-                            Button(action: { searchText = "" }) {
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    searchText = ""
+                                    searchResults = []
+                                    isSearching = false
+                                }
+                            }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.gray)
                             }
+                            .transition(.scale.combined(with: .opacity))
                         }
                     }
-                    .padding(8)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(10)
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(searchText.isEmpty ? Color.clear : Color.blue.opacity(0.3), lineWidth: 1)
+                    )
                     .padding(.horizontal)
                     .padding(.vertical, 8)
+                    .animation(.easeInOut(duration: 0.2), value: searchText.isEmpty)
                     
-                    // Chats list
+                    // Content
                     ScrollView {
                         VStack(spacing: 0) {
-                            ForEach(mockChats) { chat in
-                                NavigationLink(destination: ChatView(chat: chat)) {
-                                    ChatRow(chat: chat, isEditMode: isEditMode)
+                            if isSearching && !searchResults.isEmpty {
+                                // Search results
+                                ForEach(searchResults, id: \.phone) { user in
+                                    NavigationLink(destination: ChatView(
+                                        contactPhone: user.phone,
+                                        contactName: user.name,
+                                        hideTabBar: $hideTabBar
+                                    )) {
+                                        SearchResultRow(user: user)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    Divider()
+                                        .padding(.leading, 76)
                                 }
-                                .buttonStyle(PlainButtonStyle())
-                                Divider()
-                                    .padding(.leading, 76)
+                            } else if chats.isEmpty && !isSearching {
+                                // Empty state
+                                VStack(spacing: 16) {
+                                    Image(systemName: "message.badge.circle")
+                                        .font(.system(size: 64))
+                                        .foregroundColor(.gray.opacity(0.5))
+                                        .symbolEffect(.pulse, options: .repeating)
+                                    
+                                    Text("Нет чатов")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundColor(.gray)
+                                    
+                                    Text("Используйте поиск выше, чтобы найти пользователей по номеру или имени")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.gray)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 40)
+                                }
+                                .padding(.top, 100)
+                                .transition(.scale.combined(with: .opacity))
+                            } else if !isSearching {
+                                // Chats list
+                                ForEach(chats, id: \.contact_phone) { chat in
+                                    NavigationLink(destination: ChatView(
+                                        contactPhone: chat.contact_phone,
+                                        contactName: chat.contact_name,
+                                        hideTabBar: $hideTabBar
+                                    )) {
+                                        ChatRow(chat: chat, isEditMode: isEditMode)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    Divider()
+                                        .padding(.leading, 76)
+                                }
                             }
                         }
                     }
@@ -108,20 +244,42 @@ struct ChatsListView: View {
             .navigationTitle(settings.localizedString("chats"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(isEditMode ? "Done" : settings.localizedString("edit")) {
-                        isEditMode.toggle()
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {}) {
+                        Image(systemName: "square.and.pencil")
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack {
-                        Button(action: {}) {
-                            Image(systemName: "magnifyingglass")
-                        }
-                        Button(action: {}) {
-                            Image(systemName: "square.and.pencil")
-                        }
-                    }
+            }
+        }
+        .onAppear {
+            loadChats()
+        }
+    }
+    
+    func loadChats() {
+        NetworkManager.shared.getChats(phone: settings.userPhone) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let loadedChats):
+                    self.chats = loadedChats
+                case .failure(let error):
+                    print("Error loading chats: \(error)")
+                }
+            }
+        }
+    }
+    
+    func performSearch(query: String) {
+        isSearching = true
+        NetworkManager.shared.searchUsers(query: query) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let users):
+                    // Filter out current user
+                    self.searchResults = users.filter { $0.phone != settings.userPhone }
+                case .failure(let error):
+                    print("Search error: \(error)")
+                    self.searchResults = []
                 }
             }
         }
@@ -141,69 +299,99 @@ struct ChatsListView: View {
     }
 }
 
-struct ContactsView: View {
+struct SearchResultRow: View {
+    let user: UserData
+    
+    var avatarColor: Color {
+        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .red, .cyan, .indigo]
+        let hash = abs(user.phone.hashValue)
+        return colors[hash % colors.count]
+    }
+    
     var body: some View {
-        NavigationView {
-            List {
-                Section {
-                    ContactRow(name: "Invite Friends", icon: "person.badge.plus", color: .blue)
-                    ContactRow(name: "Find People Nearby", icon: "location.fill", color: .blue)
-                }
+        HStack(spacing: 12) {
+            // Avatar with icon
+            ZStack {
+                Circle()
+                    .fill(avatarColor)
+                    .frame(width: 52, height: 52)
                 
-                Section(header: Text("SORTED BY LAST SEEN")) {
-                    ForEach(mockContacts) { contact in
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(contact.color)
-                                .frame(width: 40, height: 40)
-                                .overlay(
-                                    Text(contact.initials)
-                                        .foregroundColor(.white)
-                                        .font(.system(size: 16, weight: .medium))
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(contact.name)
-                                    .font(.system(size: 17))
-                                Text(contact.status)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
+                if user.name.isEmpty {
+                    Image(systemName: "person.fill")
+                        .foregroundColor(.white)
+                        .font(.system(size: 24))
+                } else {
+                    Text(String(user.name.prefix(2)).uppercased())
+                        .foregroundColor(.white)
+                        .font(.system(size: 20, weight: .medium))
                 }
             }
-            .navigationTitle("Contacts")
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(user.name.isEmpty ? "User" : user.name)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 4) {
+                    if let username = user.username, !username.isEmpty {
+                        Text("@\(username)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                        Text("•")
+                            .foregroundColor(.gray)
+                    }
+                    Text(user.phone)
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray.opacity(0.3))
+                .font(.system(size: 14))
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(.systemBackground).opacity(0.8))
+    }
+}
+
+struct ContactsView: View {
+    @EnvironmentObject var settings: AppSettings
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "person.2.circle")
+                    .font(.system(size: 64))
+                    .foregroundColor(.gray)
+                Text("Контакты")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.gray)
+                Text("Используйте поиск в чатах для поиска пользователей")
+                    .font(.system(size: 15))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle(settings.localizedString("contacts"))
             .navigationBarTitleDisplayMode(.large)
         }
     }
 }
 
-struct ContactRow: View {
-    let name: String
-    let icon: String
-    let color: Color
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(color)
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Image(systemName: icon)
-                        .foregroundColor(.white)
-                )
-            
-            Text(name)
-                .font(.system(size: 17))
-                .foregroundColor(.blue)
-        }
-    }
-}
-
 struct ChatRow: View {
-    let chat: Chat
+    let chat: ChatData
     var isEditMode: Bool = false
+    
+    var avatarColor: Color {
+        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .red, .cyan, .indigo]
+        let hash = abs(chat.contact_phone.hashValue)
+        return colors[hash % colors.count]
+    }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -214,40 +402,49 @@ struct ChatRow: View {
                 }
             }
             
-            // Avatar
-            Circle()
-                .fill(chat.color)
-                .frame(width: 52, height: 52)
-                .overlay(
-                    Text(chat.initials)
+            // Avatar with icon
+            ZStack {
+                Circle()
+                    .fill(avatarColor)
+                    .frame(width: 52, height: 52)
+                
+                if chat.contact_name.isEmpty {
+                    Image(systemName: "person.fill")
+                        .foregroundColor(.white)
+                        .font(.system(size: 24))
+                } else {
+                    Text(String(chat.contact_name.prefix(2)).uppercased())
                         .foregroundColor(.white)
                         .font(.system(size: 20, weight: .medium))
-                )
+                }
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(chat.name)
+                    Text(chat.contact_name.isEmpty ? "User" : chat.contact_name)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.primary)
                     Spacer()
-                    Text(chat.time)
+                    Text(formatTime(chat.last_message_time))
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
                 }
                 
                 HStack {
-                    if chat.isRead {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
+                    if !chat.last_message.isEmpty {
+                        Text(chat.last_message)
+                            .font(.system(size: 15))
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    } else {
+                        Text("Нет сообщений")
+                            .font(.system(size: 15))
+                            .foregroundColor(.gray.opacity(0.6))
+                            .italic()
                     }
-                    Text(chat.lastMessage)
-                        .font(.system(size: 15))
-                        .foregroundColor(.gray)
-                        .lineLimit(1)
                     Spacer()
-                    if chat.unreadCount > 0 {
-                        Text("\(chat.unreadCount)")
+                    if chat.unread_count > 0 {
+                        Text("\(chat.unread_count)")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.white)
                             .padding(.horizontal, 7)
@@ -262,43 +459,27 @@ struct ChatRow: View {
         .padding(.vertical, 8)
         .background(Color(.systemBackground).opacity(0.8))
     }
+    
+    func formatTime(_ isoString: String) -> String {
+        guard !isoString.isEmpty else { return "" }
+        
+        let formatter = ISO8601DateFormatter()
+        guard let date = formatter.date(from: isoString) else { return "" }
+        
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            let timeFormatter = DateFormatter()
+            timeFormatter.timeStyle = .short
+            return timeFormatter.string(from: date)
+        } else if calendar.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "MMM d"
+            return dateFormatter.string(from: date)
+        }
+    }
 }
-
-struct Chat: Identifiable {
-    let id = UUID()
-    let name: String
-    let lastMessage: String
-    let time: String
-    let unreadCount: Int
-    let isRead: Bool
-    let color: Color
-    let initials: String
-}
-
-struct Contact: Identifiable {
-    let id = UUID()
-    let name: String
-    let status: String
-    let color: Color
-    let initials: String
-}
-
-let mockChats = [
-    Chat(name: "Saved Messages", lastMessage: "You: Test message", time: "12:30", unreadCount: 0, isRead: true, color: .blue, initials: "📌"),
-    Chat(name: "John Doe", lastMessage: "Hey! How are you?", time: "11:45", unreadCount: 3, isRead: false, color: .green, initials: "JD"),
-    Chat(name: "Work Group", lastMessage: "Alice: Meeting at 3 PM", time: "10:20", unreadCount: 12, isRead: false, color: .orange, initials: "WG"),
-    Chat(name: "Mom", lastMessage: "Don't forget to call", time: "Yesterday", unreadCount: 0, isRead: true, color: .pink, initials: "M"),
-    Chat(name: "Dev Team", lastMessage: "Bob: Push to production?", time: "Yesterday", unreadCount: 5, isRead: false, color: .purple, initials: "DT"),
-    Chat(name: "Sarah", lastMessage: "See you tomorrow!", time: "Monday", unreadCount: 0, isRead: true, color: .red, initials: "S"),
-    Chat(name: "Crypto News", lastMessage: "Bitcoin hits new high", time: "Sunday", unreadCount: 0, isRead: false, color: .cyan, initials: "CN"),
-]
-
-let mockContacts = [
-    Contact(name: "Alice Johnson", status: "online", color: .blue, initials: "AJ"),
-    Contact(name: "Bob Smith", status: "last seen recently", color: .green, initials: "BS"),
-    Contact(name: "Charlie Brown", status: "last seen 2 hours ago", color: .orange, initials: "CB"),
-    Contact(name: "Diana Prince", status: "last seen yesterday", color: .purple, initials: "DP"),
-]
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {

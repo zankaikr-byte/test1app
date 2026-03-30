@@ -277,6 +277,7 @@ struct AuthView: View {
                 case .success(let userData):
                     settings.userPhone = phoneNumber
                     settings.userName = userData.name
+                    settings.userUsername = userData.username ?? ""
                     settings.isAuthenticated = true
                     
                 case .failure(_):

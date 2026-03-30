@@ -9,8 +9,24 @@ class AppSettings: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var userPhone: String = ""
     @Published var userName: String = ""
+    @Published var userUsername: String = ""
     @Published var userId: String = ""
     @Published var telegramId: String = ""
+    
+    func updateProfile(name: String, username: String, completion: @escaping (Bool) -> Void) {
+        NetworkManager.shared.updateProfile(phone: userPhone, name: name, username: username) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.userName = name
+                    self.userUsername = username
+                    completion(true)
+                case .failure:
+                    completion(false)
+                }
+            }
+        }
+    }
     
     func localizedString(_ key: String) -> String {
         let translations: [String: [String: String]] = [

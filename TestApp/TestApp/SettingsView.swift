@@ -3,27 +3,50 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var settings: AppSettings
     
+    var avatarColor: Color {
+        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .red, .cyan, .indigo]
+        let hash = abs(settings.userPhone.hashValue)
+        return colors[hash % colors.count]
+    }
+    
     var body: some View {
         NavigationView {
             List {
                 // Profile section
                 NavigationLink(destination: ProfileView()) {
                     HStack(spacing: 16) {
-                        Circle()
-                            .fill(Color.blue)
-                            .frame(width: 64, height: 64)
-                            .overlay(
-                                Text("ME")
+                        ZStack {
+                            Circle()
+                                .fill(avatarColor)
+                                .frame(width: 64, height: 64)
+                            
+                            if settings.userName.isEmpty {
+                                Image(systemName: "person.fill")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 32))
+                            } else {
+                                Text(String(settings.userName.prefix(2)).uppercased())
                                     .foregroundColor(.white)
                                     .font(.system(size: 24, weight: .medium))
-                            )
+                            }
+                        }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("My Name")
+                            Text(settings.userName.isEmpty ? "User" : settings.userName)
                                 .font(.system(size: 20, weight: .semibold))
-                            Text("+1 234 567 8900")
-                                .font(.system(size: 15))
-                                .foregroundColor(.gray)
+                            
+                            HStack(spacing: 4) {
+                                if !settings.userUsername.isEmpty {
+                                    Text("@\(settings.userUsername)")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.gray)
+                                    Text("•")
+                                        .foregroundColor(.gray)
+                                }
+                                Text(settings.userPhone)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.gray)
+                            }
                         }
                         
                         Spacer()
@@ -96,22 +119,37 @@ struct SettingsRow: View {
 // Profile View
 struct ProfileView: View {
     @EnvironmentObject var settings: AppSettings
-    @State private var name = "My Name"
-    @State private var username = "@myusername"
+    @State private var name = ""
+    @State private var username = ""
     @State private var bio = "Hey there! I'm using Telegram"
+    @State private var isSaving = false
+    @State private var showSaveSuccess = false
+    
+    var avatarColor: Color {
+        let colors: [Color] = [.blue, .green, .orange, .purple, .pink, .red, .cyan, .indigo]
+        let hash = abs(settings.userPhone.hashValue)
+        return colors[hash % colors.count]
+    }
     
     var body: some View {
         List {
             Section {
                 HStack {
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 80, height: 80)
-                        .overlay(
-                            Text("ME")
+                    ZStack {
+                        Circle()
+                            .fill(avatarColor)
+                            .frame(width: 80, height: 80)
+                        
+                        if name.isEmpty {
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 40))
+                        } else {
+                            Text(String(name.prefix(2)).uppercased())
                                 .foregroundColor(.white)
                                 .font(.system(size: 32, weight: .medium))
-                        )
+                        }
+                    }
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -120,40 +158,107 @@ struct ProfileView: View {
             
             Section {
                 HStack {
-                    Text("Name")
+                    Image(systemName: "person.fill")
                         .foregroundColor(.gray)
-                    Spacer()
-                    TextField("Name", text: $name)
+                        .frame(width: 24)
+                    Text("Имя")
+                        .foregroundColor(.gray)
+                        .frame(width: 80, alignment: .leading)
+                    TextField("Имя", text: $name)
                         .multilineTextAlignment(.trailing)
                 }
                 
                 HStack {
-                    Text(settings.localizedString("username"))
+                    Image(systemName: "at")
                         .foregroundColor(.gray)
-                    Spacer()
-                    TextField("Username", text: $username)
+                        .frame(width: 24)
+                    Text("Username")
+                        .foregroundColor(.gray)
+                        .frame(width: 80, alignment: .leading)
+                    TextField("username", text: $username)
                         .multilineTextAlignment(.trailing)
+                        .autocapitalization(.none)
                 }
                 
                 HStack {
-                    Text(settings.localizedString("phone"))
+                    Image(systemName: "phone.fill")
                         .foregroundColor(.gray)
+                        .frame(width: 24)
+                    Text("Телефон")
+                        .foregroundColor(.gray)
+                        .frame(width: 80, alignment: .leading)
                     Spacer()
-                    Text("+1 234 567 8900")
+                    Text(settings.userPhone)
+                        .foregroundColor(.primary)
                 }
             }
             
             Section {
                 VStack(alignment: .leading) {
-                    Text(settings.localizedString("bio"))
-                        .foregroundColor(.gray)
-                        .font(.system(size: 13))
+                    HStack {
+                        Image(systemName: "text.alignleft")
+                            .foregroundColor(.gray)
+                        Text("О себе")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 13))
+                    }
                     TextEditor(text: $bio)
                         .frame(height: 60)
                 }
             }
+            
+            Section {
+                Button(action: saveProfile) {
+                    HStack {
+                        Spacer()
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Сохранить")
+                            }
+                            .foregroundColor(.blue)
+                        }
+                        Spacer()
+                    }
+                }
+                .disabled(isSaving)
+            }
+            
+            if showSaveSuccess {
+                Section {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Профиль обновлен")
+                            .foregroundColor(.green)
+                        Spacer()
+                    }
+                }
+            }
         }
         .navigationTitle(settings.localizedString("profile"))
+        .onAppear {
+            name = settings.userName
+            username = settings.userUsername
+        }
+    }
+    
+    func saveProfile() {
+        isSaving = true
+        showSaveSuccess = false
+        
+        settings.updateProfile(name: name, username: username) { success in
+            isSaving = false
+            if success {
+                showSaveSuccess = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    showSaveSuccess = false
+                }
+            }
+        }
     }
 }
 
