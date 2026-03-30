@@ -17,11 +17,17 @@ struct ContentView: View {
                 }
                 .tag(1)
             
+            TelegramSessionsView()
+                .tabItem {
+                    Label("TG Сессии", systemImage: "paperplane")
+                }
+                .tag(2)
+            
             SettingsView()
                 .tabItem {
                     Label("Настройки", systemImage: "gear")
                 }
-                .tag(2)
+                .tag(3)
         }
         .accentColor(.purple)
     }
@@ -137,14 +143,39 @@ struct ToolCard: View {
 }
 
 struct SettingsView: View {
+    @StateObject private var historyManager = SearchHistoryManager()
+    
     var body: some View {
         NavigationView {
             List {
+                Section(header: Text("VPN")) {
+                    NavigationLink(destination: VPNSettingsView()) {
+                        HStack {
+                            Image(systemName: "network")
+                                .foregroundColor(.blue)
+                            Text("Настройки VPN")
+                        }
+                    }
+                }
+                
+                Section(header: Text("Sherlock Search")) {
+                    NavigationLink(destination: SearchHistoryView(historyManager: historyManager)) {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundColor(.purple)
+                            Text("История поиска")
+                            Spacer()
+                            Text("\(historyManager.history.count)")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
                 Section(header: Text("О приложении")) {
                     HStack {
                         Text("Версия")
                         Spacer()
-                        Text("3.0")
+                        Text("3.1")
                             .foregroundColor(.gray)
                     }
                 }
