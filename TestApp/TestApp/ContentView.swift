@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedTab = 0
+    @State private var selectedTab = 1
     @State private var hideTabBar = false
     @State private var totalUnreadCount = 0
     @EnvironmentObject var settings: AppSettings
@@ -9,10 +9,10 @@ struct ContentView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
-                ChatsListView(hideTabBar: $hideTabBar, totalUnreadCount: $totalUnreadCount)
+                ContactsView()
                     .tag(0)
                 
-                ContactsView()
+                ChatsListView(hideTabBar: $hideTabBar, totalUnreadCount: $totalUnreadCount)
                     .tag(1)
                 
                 SettingsView()
@@ -461,11 +461,11 @@ struct GlassTabBar: View {
                     TabBarButton(
                         icon: "person.2.fill",
                         title: settings.localizedString("contacts"),
-                        isSelected: selectedTab == 1,
+                        isSelected: selectedTab == 0,
                         badge: nil
                     ) {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                            selectedTab = 1
+                            selectedTab = 0
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -473,11 +473,11 @@ struct GlassTabBar: View {
                     TabBarButton(
                         icon: "message.fill",
                         title: settings.localizedString("chats"),
-                        isSelected: selectedTab == 0,
+                        isSelected: selectedTab == 1,
                         badge: totalUnreadCount > 0 ? totalUnreadCount : nil
                     ) {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                            selectedTab = 0
+                            selectedTab = 1
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -552,7 +552,7 @@ struct SelectionIndicator: View {
     var body: some View {
         GeometryReader { geometry in
             let itemWidth = geometry.size.width / 3
-            let offset = CGFloat(selectedTab == 1 ? 0 : selectedTab == 0 ? 1 : 2) * itemWidth
+            let offset = CGFloat(selectedTab) * itemWidth
             
             ZStack {
                 // Selection blob

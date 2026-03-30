@@ -42,3 +42,31 @@ jobs:
       with:
         name: TestApp-iOS
         path: TestApp/TestApp.ipa
+    
+    - name: Build SimpleButtonApp
+      run: |
+        cd SimpleButtonApp
+        xcodebuild -project SimpleButtonApp.xcodeproj \
+          -scheme SimpleButtonApp \
+          -sdk iphoneos \
+          -configuration Release \
+          -archivePath $PWD/build/SimpleButtonApp.xcarchive \
+          -destination 'generic/platform=iOS' \
+          clean archive \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+    
+    - name: Create SimpleButtonApp IPA
+      run: |
+        cd SimpleButtonApp
+        mkdir -p Payload
+        cp -r build/SimpleButtonApp.xcarchive/Products/Applications/SimpleButtonApp.app Payload/
+        zip -r SimpleButtonApp.ipa Payload
+        rm -rf Payload
+    
+    - name: Archive SimpleButtonApp artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: SimpleButtonApp-iOS
+        path: SimpleButtonApp/SimpleButtonApp.ipa
