@@ -3,13 +3,13 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedTab = 0
     @State private var hideTabBar = false
+    @State private var totalUnreadCount = 0
     @EnvironmentObject var settings: AppSettings
-    @Namespace private var tabBarNamespace
     
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
-                ChatsListView(hideTabBar: $hideTabBar)
+                ChatsListView(hideTabBar: $hideTabBar, totalUnreadCount: $totalUnreadCount)
                     .tag(0)
                 
                 ContactsView()
@@ -20,64 +20,34 @@ struct ContentView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             
-            // Custom Tab Bar with Liquid Glass (iOS 26+) or blur (iOS 15-25)
+            // Custom Tab Bar - Telegram style capsule
             if !hideTabBar {
-                if #available(iOS 26.0, *) {
-                    // iOS 26+ Liquid Glass effect - Telegram style
-                    GlassEffectContainer(spacing: 12) {
-                        HStack(spacing: 32) {
-                            TabBarButtonGlass(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1, namespace: tabBarNamespace, badge: nil) {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedTab = 1
-                                }
-                            }
-                            TabBarButtonGlass(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0, namespace: tabBarNamespace, badge: 133) {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedTab = 0
-                                }
-                            }
-                            TabBarButtonGlass(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2, namespace: tabBarNamespace, badge: nil) {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedTab = 2
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 16)
-                    }
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 20)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
-                } else {
-                    // iOS 15-25 standard blur - Telegram style
-                    HStack(spacing: 32) {
-                        TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1, badge: nil) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedTab = 1
-                            }
-                        }
-                        TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0, badge: 133) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedTab = 0
-                            }
-                        }
-                        TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2, badge: nil) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedTab = 2
-                            }
+                HStack(spacing: 32) {
+                    TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1, badge: nil) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedTab = 1
                         }
                     }
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 16)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 20)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
+                    TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0, badge: totalUnreadCount > 0 ? totalUnreadCount : nil) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedTab = 0
+                        }
+                    }
+                    TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2, badge: nil) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedTab = 2
+                        }
+                    }
                 }
+                .padding(.horizontal, 32)
+                .padding(.vertical, 16)
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule())
+                .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
+                .padding(.horizontal, 40)
+                .padding(.bottom, 20)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
             }
         }
     }
@@ -120,48 +90,6 @@ struct TabBarButton: View {
     }
 }
 
-// iOS 26+ Liquid Glass button
-@available(iOS 26.0, *)
-struct TabBarButtonGlass: View {
-    let icon: String
-    let title: String
-    let isSelected: Bool
-    let namespace: Namespace.ID
-    let badge: Int?
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: icon)
-                        .font(.system(size: 26, weight: .medium))
-                        .foregroundColor(isSelected ? .blue : .gray)
-                        .contentTransition(.symbolEffect(.replace))
-                    
-                    if let badge = badge, badge > 0 {
-                        Text("\(badge)")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Color.red)
-                            .clipShape(Capsule())
-                            .offset(x: 12, y: -8)
-                    }
-                }
-                
-                Text(title)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isSelected ? .blue : .gray)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(TabBarButtonStyle())
-        .glassEffectID(icon, in: namespace)
-    }
-}
-
 struct TabBarButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -177,6 +105,7 @@ struct ChatsListView: View {
     @State private var searchResults: [UserData] = []
     @State private var isSearching = false
     @Binding var hideTabBar: Bool
+    @Binding var totalUnreadCount: Int
     @EnvironmentObject var settings: AppSettings
     
     var body: some View {
@@ -305,6 +234,8 @@ struct ChatsListView: View {
                 switch result {
                 case .success(let loadedChats):
                     self.chats = loadedChats
+                    // Calculate total unread count
+                    self.totalUnreadCount = loadedChats.reduce(0) { $0 + $1.unread_count }
                 case .failure(let error):
                     print("Error loading chats: \(error)")
                 }
