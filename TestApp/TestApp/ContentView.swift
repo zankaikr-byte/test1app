@@ -1,5 +1,26 @@
 import SwiftUI
 
+// Liquid Glass Effect для iOS 26+
+@available(iOS 26.0, *)
+struct GlassEffectContainer<Content: View>: View {
+    let content: () -> Content
+    
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+    
+    var body: some View {
+        content()
+    }
+}
+
+extension View {
+    @available(iOS 26.0, *)
+    func glassEffect() -> some View {
+        self.background(.ultraThinMaterial)
+    }
+}
+
 struct ContentView: View {
     @State private var selectedTab = 0
     @State private var hideTabBar = false
@@ -104,7 +125,6 @@ struct TabBarButton: View {
                     Image(systemName: icon)
                         .font(.system(size: 22, weight: .medium))
                         .foregroundColor(isSelected ? .blue : .gray)
-                        .symbolEffect(.bounce, value: isSelected)
                 }
                 
                 Text(title)
@@ -208,7 +228,6 @@ struct ChatsListView: View {
                                     Image(systemName: "message.badge.circle")
                                         .font(.system(size: 64))
                                         .foregroundColor(.gray.opacity(0.5))
-                                        .symbolEffect(.pulse, options: .repeating)
                                     
                                     Text("Нет чатов")
                                         .font(.system(size: 20, weight: .semibold))
@@ -244,7 +263,7 @@ struct ChatsListView: View {
             .navigationTitle(settings.localizedString("chats"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: {}) {
                         Image(systemName: "square.and.pencil")
                     }
