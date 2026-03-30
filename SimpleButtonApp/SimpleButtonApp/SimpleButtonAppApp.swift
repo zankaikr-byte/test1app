@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SimpleButtonAppApp: App {
+struct CatalistApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
