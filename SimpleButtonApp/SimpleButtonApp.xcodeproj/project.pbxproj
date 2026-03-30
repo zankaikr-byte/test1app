@@ -14,6 +14,7 @@
 		A1000024000000000000001 /* DomainCheckerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000025000000000000001 /* DomainCheckerView.swift */; };
 		A1000026000000000000001 /* IPCheckerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000027000000000000001 /* IPCheckerView.swift */; };
 		A1000028000000000000001 /* SherlockSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000029000000000000001 /* SherlockSearchView.swift */; };
+		A1000030000000000000001 /* VPNView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000031000000000000001 /* VPNView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,8 @@
 		A1000025000000000000001 /* DomainCheckerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainCheckerView.swift; sourceTree = "<group>"; };
 		A1000027000000000000001 /* IPCheckerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPCheckerView.swift; sourceTree = "<group>"; };
 		A1000029000000000000001 /* SherlockSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherlockSearchView.swift; sourceTree = "<group>"; };
+		A1000031000000000000001 /* VPNView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNView.swift; sourceTree = "<group>"; };
+		A1000033000000000000001 /* SimpleButtonApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SimpleButtonApp.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,8 +60,10 @@
 		A1000010000000000000001 /* SimpleButtonApp */ = {
 			isa = PBXGroup;
 			children = (
+				A1000033000000000000001 /* SimpleButtonApp.entitlements */,
 				A1000002000000000000001 /* SimpleButtonAppApp.swift */,
 				A1000004000000000000001 /* ContentView.swift */,
+				A1000031000000000000001 /* VPNView.swift */,
 				A1000023000000000000001 /* TelegraphIPLoggerView.swift */,
 				A1000025000000000000001 /* DomainCheckerView.swift */,
 				A1000027000000000000001 /* IPCheckerView.swift */,
@@ -138,6 +143,7 @@
 				A1000024000000000000001 /* DomainCheckerView.swift in Sources */,
 				A1000026000000000000001 /* IPCheckerView.swift in Sources */,
 				A1000028000000000000001 /* SherlockSearchView.swift in Sources */,
+				A1000030000000000000001 /* VPNView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,11 +274,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SimpleButtonApp/SimpleButtonApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Catalist v3";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,7 +290,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.TestApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -296,11 +304,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SimpleButtonApp/SimpleButtonApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Catalist v3";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -310,7 +320,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.TestApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
