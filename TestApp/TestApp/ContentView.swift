@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var hideTabBar = false
     @State private var totalUnreadCount = 0
     @EnvironmentObject var settings: AppSettings
+    @Namespace private var tabBarNamespace
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -20,34 +21,64 @@ struct ContentView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             
-            // Custom Tab Bar - Telegram style capsule
+            // Custom Tab Bar - Telegram style with Liquid Glass (iOS 26+)
             if !hideTabBar {
-                HStack(spacing: 32) {
-                    TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1, badge: nil) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedTab = 1
+                if #available(iOS 26.0, *) {
+                    // iOS 26+ Liquid Glass
+                    GlassEffectContainer(spacing: 12) {
+                        HStack(spacing: 32) {
+                            TabBarButtonGlass(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1, badge: nil, namespace: tabBarNamespace) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedTab = 1
+                                }
+                            }
+                            TabBarButtonGlass(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0, badge: totalUnreadCount > 0 ? totalUnreadCount : nil, namespace: tabBarNamespace) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedTab = 0
+                                }
+                            }
+                            TabBarButtonGlass(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2, badge: nil, namespace: tabBarNamespace) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    selectedTab = 2
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 16)
+                    }
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
+                } else {
+                    // iOS 15-25 fallback
+                    HStack(spacing: 32) {
+                        TabBarButton(icon: "person.2.fill", title: settings.localizedString("contacts"), isSelected: selectedTab == 1, badge: nil) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedTab = 1
+                            }
+                        }
+                        TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0, badge: totalUnreadCount > 0 ? totalUnreadCount : nil) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedTab = 0
+                            }
+                        }
+                        TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2, badge: nil) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                selectedTab = 2
+                            }
                         }
                     }
-                    TabBarButton(icon: "message.fill", title: settings.localizedString("chats"), isSelected: selectedTab == 0, badge: totalUnreadCount > 0 ? totalUnreadCount : nil) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedTab = 0
-                        }
-                    }
-                    TabBarButton(icon: "gearshape.fill", title: settings.localizedString("settings"), isSelected: selectedTab == 2, badge: nil) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedTab = 2
-                        }
-                    }
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 16)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
                 }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
-                .background(.ultraThinMaterial)
-                .clipShape(Capsule())
-                .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 10)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 20)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: hideTabBar)
             }
         }
     }
@@ -87,6 +118,48 @@ struct TabBarButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(TabBarButtonStyle())
+    }
+}
+
+// iOS 26+ Liquid Glass button
+@available(iOS 26.0, *)
+struct TabBarButtonGlass: View {
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let badge: Int?
+    let namespace: Namespace.ID
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: icon)
+                        .font(.system(size: 26, weight: .medium))
+                        .foregroundColor(isSelected ? .blue : .gray)
+                        .contentTransition(.symbolEffect(.replace))
+                    
+                    if let badge = badge, badge > 0 {
+                        Text("\(badge)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color.red)
+                            .clipShape(Capsule())
+                            .offset(x: 12, y: -8)
+                    }
+                }
+                
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(isSelected ? .blue : .gray)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(TabBarButtonStyle())
+        .glassEffectID(icon, in: namespace)
     }
 }
 
