@@ -114,9 +114,19 @@ struct AddSessionView: View {
         isLoading = true
         errorMessage = ""
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            isLoading = false
-            step = 2
+        Task {
+            do {
+                let hash = try await TelegramAPI.shared.sendCode(phoneNumber: phoneNumber)
+                await MainActor.run {
+                    isLoading = false
+                    step = 2
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = "Ошибка отправки кода: \(error.localizedDescription)"
+                }
+            }
         }
     }
     
@@ -124,12 +134,27 @@ struct AddSessionView: View {
         isLoading = true
         errorMessage = ""
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            isLoading = false
-            if code.count >= 5 {
-                step = 3
-            } else {
-                errorMessage = "Неверный код"
+        Task {
+            do {
+                guard let hash = TelegramAPI.shared.phoneCodeHash else {
+                    throw NSError(domain: "TG", code: -1, userInfo: [NSLocalizedDescriptionKey: "No code hash"])
+                }
+                
+                let sessionString = try await TelegramAPI.shared.signIn(
+                    phoneNumber: phoneNumber,
+                    code: code,
+                    phoneCodeHash: hash
+                )
+                
+                await MainActor.run {
+                    isLoading = false
+                    step = 3
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = "Неверный код или ошибка: \(error.localizedDescription)"
+                }
             }
         }
     }
@@ -137,16 +162,51 @@ struct AddSessionView: View {
     func completeSetup() {
         isLoading = true
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            let session = TelegramSession(
-                phoneNumber: phoneNumber,
-                botUsername: botUsername,
-                availableRequests: 100,
-                isActive: true
-            )
-            sessionManager.addSession(session)
-            isLoading = false
-            dismiss()
+        Task {
+            do {
+                try await TelegramAPI.shared.sendMessage(
+                    sessionString: "session_\(phoneNumber)",
+                    botUsername: botUsername,
+                    message: "/start"
+                )
+                
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                
+                let profileResponse = try await TelegramAPI.shared.sendMessage(
+                    sessionString: "session_\(phoneNumber)",
+                    botUsername: botUsername,
+                    message: "/profile"
+                )
+                
+                let requestCount = extractRequestCount(from: profileResponse)
+                
+                await MainActor.run {
+                    let session = TelegramSession(
+                        phoneNumber: phoneNumber,
+                        botUsername: botUsername,
+                        availableRequests: requestCount,
+                        isActive: true
+                    )
+                    sessionManager.addSession(session)
+                    isLoading = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                    errorMessage = "Ошибка настройки бота: \(error.localizedDescription)"
+                }
+            }
         }
+    }
+    
+    func extractRequestCount(from response: String) -> Int {
+        let pattern = #"(\d+)\s*(запрос|request)"#
+        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+           let match = regex.firstMatch(in: response, range: NSRange(response.startIndex..., in: response)),
+           let range = Range(match.range(at: 1), in: response) {
+            return Int(response[range]) ?? 100
+        }
+        return 100
     }
 }

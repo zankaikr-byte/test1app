@@ -480,4 +480,4 @@ def create_telegraph_logger(self):
                 pystyle.Colors.yellow, 
                 interval=0.005
             )
-    
+      

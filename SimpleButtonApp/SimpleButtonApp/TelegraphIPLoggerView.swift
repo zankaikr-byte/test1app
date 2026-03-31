@@ -12,6 +12,9 @@ struct TelegraphIPLoggerView: View {
     @State private var statusMessage = ""
     @State private var logs: [IPLog] = []
     @State private var isMonitoring = false
+    @State private var selectedWebhookService = "webhook.site"
+    @State private var customWebhookURL = ""
+    @State private var showWebhookPicker = false
     
     var body: some View {
         ZStack {
@@ -41,6 +44,27 @@ struct TelegraphIPLoggerView: View {
                     if generatedLink.isEmpty {
                         // Форма создания
                         VStack(spacing: 16) {
+                            Button(action: { showWebhookPicker = true }) {
+                                HStack {
+                                    Image(systemName: "link.circle")
+                                    Text("Webhook: \(selectedWebhookService)")
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                }
+                                .padding()
+                                .background(Color(.systemBackground))
+                                .cornerRadius(12)
+                            }
+                            .foregroundColor(.primary)
+                            
+                            if selectedWebhookService == "custom" {
+                                TextField("Custom Webhook URL", text: $customWebhookURL)
+                                    .padding()
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(12)
+                                    .autocapitalization(.none)
+                            }
+                            
                             TextField("Заголовок статьи", text: $title)
                                 .padding()
                                 .background(Color(.systemBackground))
@@ -85,6 +109,9 @@ struct TelegraphIPLoggerView: View {
                             .disabled(isCreating || title.isEmpty || description.isEmpty)
                         }
                         .padding()
+                        .sheet(isPresented: $showWebhookPicker) {
+                            WebhookPickerView(selectedService: $selectedWebhookService)
+                        }
                     } else {
                         // Результат
                         VStack(spacing: 16) {
@@ -238,19 +265,24 @@ struct TelegraphIPLoggerView: View {
         
         Task {
             do {
-                // Создаем webhook
-                let webhookData = try await createWebhook()
-                webhookURL = "https://webhook.site/\(webhookData.uuid)"
-                webhookCheckURL = "https://webhook.site/token/\(webhookData.uuid)/requests"
+                if selectedWebhookService == "custom" {
+                    webhookURL = customWebhookURL
+                    webhookCheckURL = customWebhookURL
+                } else if selectedWebhookService == "discord" {
+                    webhookURL = customWebhookURL
+                    webhookCheckURL = ""
+                } else {
+                    let webhookData = try await createWebhook()
+                    webhookURL = "https://webhook.site/\(webhookData.uuid)"
+                    webhookCheckURL = "https://webhook.site/token/\(webhookData.uuid)/requests"
+                }
                 
                 statusMessage = "Создание Telegraph аккаунта..."
                 
-                // Создаем Telegraph аккаунт
                 let accessToken = try await createTelegraphAccount(author: author.isEmpty ? "Anonymous" : author)
                 
                 statusMessage = "Создание статьи..."
                 
-                // Создаем статью с IP логгером
                 let pageURL = try await createTelegraphPage(
                     accessToken: accessToken,
                     title: title,
@@ -310,17 +342,17 @@ struct TelegraphIPLoggerView: View {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let body: [String: Any] = [
+        let body: [String: String] = [
             "short_name": author,
             "author_name": author
         ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try JSONEncoder().encode(body)
         
         let (data, _) = try await URLSession.shared.data(for: request)
         let response = try JSONDecoder().decode(TelegraphAccountResponse.self, from: data)
         
         guard response.ok else {
-            throw NSError(domain: "Telegraph", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create account"])
+            throw NSError(domain: "Telegraph", code: -1)
         }
         
         return response.result.access_token
@@ -334,16 +366,8 @@ struct TelegraphIPLoggerView: View {
         
         let timestamp = Int(Date().timeIntervalSince1970)
         let content: [[String: Any]] = [
-            [
-                "tag": "p",
-                "children": [description]
-            ],
-            [
-                "tag": "img",
-                "attrs": [
-                    "src": "\(webhookURL)?logger=ip&t=\(timestamp)"
-                ]
-            ]
+            ["tag": "p", "children": [description]],
+            ["tag": "img", "attrs": ["src": "\(webhookURL)?logger=ip&t=\(timestamp)"]]
         ]
         
         let body: [String: Any] = [
@@ -359,7 +383,7 @@ struct TelegraphIPLoggerView: View {
         let response = try JSONDecoder().decode(TelegraphPageResponse.self, from: data)
         
         guard response.ok else {
-            throw NSError(domain: "Telegraph", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create page"])
+            throw NSError(domain: "Telegraph", code: -1)
         }
         
         return "https://telegra.ph/\(response.result.path)"
@@ -445,4 +469,59 @@ struct WebhookRequest: Codable {
 struct IPInfo: Codable {
     let country: String
     let city: String
+}
+
+struct WebhookPickerView: View {
+    @Binding var selectedService: String
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Button(action: {
+                    selectedService = "webhook.site"
+                    dismiss()
+                }) {
+                    HStack {
+                        Text("Webhook.site")
+                        Spacer()
+                        if selectedService == "webhook.site" {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+                
+                Button(action: {
+                    selectedService = "discord"
+                    dismiss()
+                }) {
+                    HStack {
+                        Text("Discord Webhook")
+                        Spacer()
+                        if selectedService == "discord" {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+                
+                Button(action: {
+                    selectedService = "custom"
+                    dismiss()
+                }) {
+                    HStack {
+                        Text("Custom Webhook")
+                        Spacer()
+                        if selectedService == "custom" {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Выбор Webhook")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
 }

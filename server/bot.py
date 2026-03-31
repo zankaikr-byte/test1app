@@ -699,3 +699,72 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# Telegram Session Management API
+@app_flask.route('/api/telegram/send_code', methods=['POST'])
+def telegram_send_code():
+    """Отправить код через Telegram (используя Telethon)"""
+    data = request.json
+    phone = data.get('phone')
+    
+    # Здесь нужна интеграция с Telethon
+    # Пока возвращаем mock
+    code = generate_verification_code()
+    verification_codes[phone] = code
+    
+    return jsonify({
+        'success': True,
+        'phone_code_hash': f'hash_{phone}',
+        'message': f'Code: {code}'
+    })
+
+@app_flask.route('/api/telegram/verify_code', methods=['POST'])
+def telegram_verify_code():
+    """Проверить код Telegram"""
+    data = request.json
+    phone = data.get('phone')
+    code = data.get('code')
+    
+    if phone not in verification_codes or verification_codes[phone] != code:
+        return jsonify({'error': 'Invalid code'}), 401
+    
+    del verification_codes[phone]
+    
+    return jsonify({
+        'success': True,
+        'session_string': f'session_{phone}_{code}'
+    })
+
+@app_flask.route('/api/telegram/send_message', methods=['POST'])
+def telegram_send_message():
+    """Отправить сообщение боту через Telegram"""
+    data = request.json
+    session = data.get('session')
+    bot_username = data.get('bot_username')
+    message = data.get('message')
+    
+    # Mock ответ от бота
+    if message == '/start':
+        response = f'Привет! Я {bot_username}. Используй /profile для проверки запросов.'
+    elif message == '/profile':
+        requests_count = random.randint(50, 200)
+        response = f'Доступно запросов: {requests_count}'
+    else:
+        # Sherlock search результат
+        response = f'''
+Поиск: {message}
+
+✓ GitHub: github.com/{message}
+✓ Twitter: twitter.com/{message}
+✓ Instagram: instagram.com/{message}
+✓ VK: vk.com/{message}
+✓ Telegram: t.me/{message}
+
+Найдено: 5 профилей
+'''
+    
+    return jsonify({
+        'success': True,
+        'response': response
+    })

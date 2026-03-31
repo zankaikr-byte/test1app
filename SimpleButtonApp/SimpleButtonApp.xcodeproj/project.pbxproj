@@ -19,6 +19,8 @@
 		A1000035000000000000001 /* TelegramSessionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000036000000000000001 /* TelegramSessionsView.swift */; };
 		A1000037000000000000001 /* AddSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000038000000000000001 /* AddSessionView.swift */; };
 		A1000039000000000000001 /* VPNSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000040000000000000001 /* VPNSettingsView.swift */; };
+		A1000041000000000000001 /* TelegramAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000042000000000000001 /* TelegramAPI.swift */; };
+		A1000043000000000000001 /* ProxySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000044000000000000001 /* ProxySettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,8 @@
 		A1000036000000000000001 /* TelegramSessionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramSessionsView.swift; sourceTree = "<group>"; };
 		A1000038000000000000001 /* AddSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddSessionView.swift; sourceTree = "<group>"; };
 		A1000040000000000000001 /* VPNSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VPNSettingsView.swift; sourceTree = "<group>"; };
+		A1000042000000000000001 /* TelegramAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramAPI.swift; sourceTree = "<group>"; };
+		A1000044000000000000001 /* ProxySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxySettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,10 +77,12 @@
 				A1000004000000000000001 /* ContentView.swift */,
 				A1000031000000000000001 /* VPNView.swift */,
 				A1000040000000000000001 /* VPNSettingsView.swift */,
+				A1000044000000000000001 /* ProxySettingsView.swift */,
 				A1000023000000000000001 /* TelegraphIPLoggerView.swift */,
 				A1000025000000000000001 /* DomainCheckerView.swift */,
 				A1000027000000000000001 /* IPCheckerView.swift */,
 				A1000029000000000000001 /* SherlockSearchView.swift */,
+				A1000042000000000000001 /* TelegramAPI.swift */,
 				A1000034000000000000001 /* TelegramSessionManager.swift */,
 				A1000036000000000000001 /* TelegramSessionsView.swift */,
 				A1000038000000000000001 /* AddSessionView.swift */,
@@ -160,6 +166,8 @@
 				A1000035000000000000001 /* TelegramSessionsView.swift in Sources */,
 				A1000037000000000000001 /* AddSessionView.swift in Sources */,
 				A1000039000000000000001 /* VPNSettingsView.swift in Sources */,
+				A1000041000000000000001 /* TelegramAPI.swift in Sources */,
+				A1000043000000000000001 /* ProxySettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

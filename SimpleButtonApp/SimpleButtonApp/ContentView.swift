@@ -158,6 +158,16 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section(header: Text("Прокси")) {
+                    NavigationLink(destination: ProxySettingsView()) {
+                        HStack {
+                            Image(systemName: "arrow.triangle.branch")
+                                .foregroundColor(.orange)
+                            Text("Настройки прокси")
+                        }
+                    }
+                }
+                
                 Section(header: Text("Sherlock Search")) {
                     NavigationLink(destination: SearchHistoryView(historyManager: historyManager)) {
                         HStack {
