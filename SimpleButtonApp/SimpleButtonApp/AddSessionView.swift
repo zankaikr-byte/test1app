@@ -116,7 +116,7 @@ struct AddSessionView: View {
         
         Task {
             do {
-                let hash = try await TelegramAPI.shared.sendCode(phoneNumber: phoneNumber)
+                _ = try await TelegramAPI.shared.sendCode(phoneNumber: phoneNumber)
                 await MainActor.run {
                     isLoading = false
                     step = 2
@@ -140,7 +140,7 @@ struct AddSessionView: View {
                     throw NSError(domain: "TG", code: -1, userInfo: [NSLocalizedDescriptionKey: "No code hash"])
                 }
                 
-                let sessionString = try await TelegramAPI.shared.signIn(
+                _ = try await TelegramAPI.shared.signIn(
                     phoneNumber: phoneNumber,
                     code: code,
                     phoneCodeHash: hash
@@ -164,7 +164,7 @@ struct AddSessionView: View {
         
         Task {
             do {
-                try await TelegramAPI.shared.sendMessage(
+                _ = try await TelegramAPI.shared.sendMessage(
                     sessionString: "session_\(phoneNumber)",
                     botUsername: botUsername,
                     message: "/start"

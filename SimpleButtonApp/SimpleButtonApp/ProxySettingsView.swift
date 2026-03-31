@@ -32,9 +32,6 @@ class ProxyManager: ObservableObject {
             kCFNetworkProxiesHTTPEnable: true,
             kCFNetworkProxiesHTTPProxy: proxyHost,
             kCFNetworkProxiesHTTPPort: Int(proxyPort) ?? 1080,
-            kCFNetworkProxiesHTTPSEnable: true,
-            kCFNetworkProxiesHTTPSProxy: proxyHost,
-            kCFNetworkProxiesHTTPSPort: Int(proxyPort) ?? 1080,
             kCFProxyTypeKey: proxyType == "socks5" ? kCFProxyTypeSOCKS : kCFProxyTypeHTTP
         ]
         
@@ -53,7 +50,7 @@ struct ProxySettingsView: View {
         Form {
             Section(header: Text("Статус")) {
                 Toggle("Использовать прокси", isOn: $proxyManager.isEnabled)
-                    .onChange(of: proxyManager.isEnabled) { _ in
+                    .onChange(of: proxyManager.isEnabled) {
                         proxyManager.toggleProxy()
                     }
             }
